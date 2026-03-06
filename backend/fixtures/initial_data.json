@@ -1,0 +1,67 @@
+[
+  {"model": "projects.proyecto", "pk": 1, "fields": {"nombre": "Planta Solar Norte - Sector A", "cliente": "Tau Sigma Ingeniería", "ubicacion": "Moquegua, Perú", "fecha_inicio": "2025-01-10", "descripcion": "Minigranja solar de 5MW con seguidores de eje simple. 10 puntos de hincado evaluados.", "created_at": "2025-01-10T08:00:00Z"}},
+  {"model": "projects.proyecto", "pk": 2, "fields": {"nombre": "Planta Solar Sur - Sector B", "cliente": "Energía Renovable SAC", "ubicacion": "Arequipa, Perú", "fecha_inicio": "2025-02-15", "descripcion": "Proyecto piloto de 2MW. Terreno con presencia de grava.", "created_at": "2025-02-15T08:00:00Z"}},
+  {"model": "projects.proyecto", "pk": 3, "fields": {"nombre": "Parque Solar Ilo", "cliente": "SunTech Perú", "ubicacion": "Ilo, Moquegua", "fecha_inicio": "2025-03-01", "descripcion": "Proyecto en fase de validación geotécnica.", "created_at": "2025-03-01T08:00:00Z"}},
+
+  {"model": "driving.hincado", "pk": 1, "fields": {"proyecto": 1, "punto_id": "PV-01", "fecha": "2025-01-12", "profundidad_total_m": 3.0, "observaciones": "Terreno homogéneo, sin obstrucciones"}},
+  {"model": "driving.hincado", "pk": 2, "fields": {"proyecto": 1, "punto_id": "PV-02", "fecha": "2025-01-12", "profundidad_total_m": 3.0, "observaciones": "Tramo final con mayor resistencia"}},
+  {"model": "driving.hincado", "pk": 3, "fields": {"proyecto": 1, "punto_id": "PV-03", "fecha": "2025-01-13", "profundidad_total_m": 3.0, "observaciones": "Rechazo en último tramo, requiere rediseño"}},
+  {"model": "driving.hincado", "pk": 4, "fields": {"proyecto": 2, "punto_id": "PV-01", "fecha": "2025-02-16", "profundidad_total_m": 2.5, "observaciones": "Grava compacta desde 1.5m"}},
+
+  {"model": "driving.tramohincado", "pk": 1,  "fields": {"hincado": 1, "numero_tramo": 1, "prof_inicio_m": 0.0, "prof_fin_m": 0.5, "tiempo_avance_min": 0.5, "clasificacion": "Suave"}},
+  {"model": "driving.tramohincado", "pk": 2,  "fields": {"hincado": 1, "numero_tramo": 2, "prof_inicio_m": 0.5, "prof_fin_m": 1.0, "tiempo_avance_min": 0.7, "clasificacion": "Suave"}},
+  {"model": "driving.tramohincado", "pk": 3,  "fields": {"hincado": 1, "numero_tramo": 3, "prof_inicio_m": 1.0, "prof_fin_m": 1.5, "tiempo_avance_min": 1.2, "clasificacion": "Medio"}},
+  {"model": "driving.tramohincado", "pk": 4,  "fields": {"hincado": 1, "numero_tramo": 4, "prof_inicio_m": 1.5, "prof_fin_m": 2.0, "tiempo_avance_min": 1.5, "clasificacion": "Medio"}},
+  {"model": "driving.tramohincado", "pk": 5,  "fields": {"hincado": 1, "numero_tramo": 5, "prof_inicio_m": 2.0, "prof_fin_m": 2.5, "tiempo_avance_min": 2.0, "clasificacion": "Medio"}},
+  {"model": "driving.tramohincado", "pk": 6,  "fields": {"hincado": 1, "numero_tramo": 6, "prof_inicio_m": 2.5, "prof_fin_m": 3.0, "tiempo_avance_min": 1.8, "clasificacion": "Medio"}},
+
+  {"model": "driving.tramohincado", "pk": 7,  "fields": {"hincado": 2, "numero_tramo": 1, "prof_inicio_m": 0.0, "prof_fin_m": 0.5, "tiempo_avance_min": 0.8, "clasificacion": "Suave"}},
+  {"model": "driving.tramohincado", "pk": 8,  "fields": {"hincado": 2, "numero_tramo": 2, "prof_inicio_m": 0.5, "prof_fin_m": 1.0, "tiempo_avance_min": 1.5, "clasificacion": "Medio"}},
+  {"model": "driving.tramohincado", "pk": 9,  "fields": {"hincado": 2, "numero_tramo": 3, "prof_inicio_m": 1.0, "prof_fin_m": 1.5, "tiempo_avance_min": 2.5, "clasificacion": "Medio"}},
+  {"model": "driving.tramohincado", "pk": 10, "fields": {"hincado": 2, "numero_tramo": 4, "prof_inicio_m": 1.5, "prof_fin_m": 2.0, "tiempo_avance_min": 3.5, "clasificacion": "Duro"}},
+  {"model": "driving.tramohincado", "pk": 11, "fields": {"hincado": 2, "numero_tramo": 5, "prof_inicio_m": 2.0, "prof_fin_m": 2.5, "tiempo_avance_min": 4.0, "clasificacion": "Duro"}},
+  {"model": "driving.tramohincado", "pk": 12, "fields": {"hincado": 2, "numero_tramo": 6, "prof_inicio_m": 2.5, "prof_fin_m": 3.0, "tiempo_avance_min": 4.5, "clasificacion": "Duro"}},
+
+  {"model": "driving.tramohincado", "pk": 13, "fields": {"hincado": 3, "numero_tramo": 1, "prof_inicio_m": 0.0, "prof_fin_m": 0.5, "tiempo_avance_min": 1.0, "clasificacion": "Medio"}},
+  {"model": "driving.tramohincado", "pk": 14, "fields": {"hincado": 3, "numero_tramo": 2, "prof_inicio_m": 0.5, "prof_fin_m": 1.0, "tiempo_avance_min": 3.0, "clasificacion": "Duro"}},
+  {"model": "driving.tramohincado", "pk": 15, "fields": {"hincado": 3, "numero_tramo": 3, "prof_inicio_m": 1.0, "prof_fin_m": 1.5, "tiempo_avance_min": 6.0, "clasificacion": "Rechazo"}},
+
+  {"model": "load_tests.ensayocarga", "pk": 1, "fields": {"hincado": 1, "fecha_ensayo": "2025-01-14", "operador": "Ing. García", "norma": "ASTM D3966", "cumple_criterio": null}},
+  {"model": "load_tests.ensayocarga", "pk": 2, "fields": {"hincado": 2, "fecha_ensayo": "2025-01-14", "operador": "Ing. García", "norma": "ASTM D3966", "cumple_criterio": null}},
+
+  {"model": "load_tests.ciclocarga", "pk": 1, "fields": {"ensayo": 1, "numero_ciclo": 1}},
+  {"model": "load_tests.ciclocarga", "pk": 2, "fields": {"ensayo": 1, "numero_ciclo": 2}},
+  {"model": "load_tests.ciclocarga", "pk": 3, "fields": {"ensayo": 2, "numero_ciclo": 1}},
+  {"model": "load_tests.ciclocarga", "pk": 4, "fields": {"ensayo": 2, "numero_ciclo": 2}},
+
+  {"model": "load_tests.puntocarga", "pk": 1,  "fields": {"ciclo": 1, "fase": "CARGA", "carga_kgf": 0,    "desplazamiento_mm": 0.00, "tiempo_min": 0}},
+  {"model": "load_tests.puntocarga", "pk": 2,  "fields": {"ciclo": 1, "fase": "CARGA", "carga_kgf": 100,  "desplazamiento_mm": 1.20, "tiempo_min": 2}},
+  {"model": "load_tests.puntocarga", "pk": 3,  "fields": {"ciclo": 1, "fase": "CARGA", "carga_kgf": 200,  "desplazamiento_mm": 2.45, "tiempo_min": 4}},
+  {"model": "load_tests.puntocarga", "pk": 4,  "fields": {"ciclo": 1, "fase": "MANT",  "carga_kgf": 200,  "desplazamiento_mm": 2.80, "tiempo_min": 9}},
+  {"model": "load_tests.puntocarga", "pk": 5,  "fields": {"ciclo": 1, "fase": "DESC",  "carga_kgf": 100,  "desplazamiento_mm": 1.50, "tiempo_min": 11}},
+  {"model": "load_tests.puntocarga", "pk": 6,  "fields": {"ciclo": 1, "fase": "DESC",  "carga_kgf": 0,    "desplazamiento_mm": 0.45, "tiempo_min": 13}},
+
+  {"model": "load_tests.puntocarga", "pk": 7,  "fields": {"ciclo": 2, "fase": "CARGA", "carga_kgf": 0,    "desplazamiento_mm": 0.45, "tiempo_min": 15}},
+  {"model": "load_tests.puntocarga", "pk": 8,  "fields": {"ciclo": 2, "fase": "CARGA", "carga_kgf": 200,  "desplazamiento_mm": 3.10, "tiempo_min": 17}},
+  {"model": "load_tests.puntocarga", "pk": 9,  "fields": {"ciclo": 2, "fase": "CARGA", "carga_kgf": 400,  "desplazamiento_mm": 6.20, "tiempo_min": 19}},
+  {"model": "load_tests.puntocarga", "pk": 10, "fields": {"ciclo": 2, "fase": "CARGA", "carga_kgf": 600,  "desplazamiento_mm": 9.80, "tiempo_min": 21}},
+  {"model": "load_tests.puntocarga", "pk": 11, "fields": {"ciclo": 2, "fase": "CARGA", "carga_kgf": 800,  "desplazamiento_mm": 14.50,"tiempo_min": 23}},
+  {"model": "load_tests.puntocarga", "pk": 12, "fields": {"ciclo": 2, "fase": "MANT",  "carga_kgf": 800,  "desplazamiento_mm": 16.20,"tiempo_min": 28}},
+  {"model": "load_tests.puntocarga", "pk": 13, "fields": {"ciclo": 2, "fase": "DESC",  "carga_kgf": 400,  "desplazamiento_mm": 9.20, "tiempo_min": 30}},
+  {"model": "load_tests.puntocarga", "pk": 14, "fields": {"ciclo": 2, "fase": "DESC",  "carga_kgf": 0,    "desplazamiento_mm": 2.10, "tiempo_min": 32}},
+
+  {"model": "load_tests.puntocarga", "pk": 15, "fields": {"ciclo": 3, "fase": "CARGA", "carga_kgf": 0,    "desplazamiento_mm": 0.00, "tiempo_min": 0}},
+  {"model": "load_tests.puntocarga", "pk": 16, "fields": {"ciclo": 3, "fase": "CARGA", "carga_kgf": 200,  "desplazamiento_mm": 3.50, "tiempo_min": 2}},
+  {"model": "load_tests.puntocarga", "pk": 17, "fields": {"ciclo": 3, "fase": "CARGA", "carga_kgf": 400,  "desplazamiento_mm": 7.80, "tiempo_min": 4}},
+  {"model": "load_tests.puntocarga", "pk": 18, "fields": {"ciclo": 3, "fase": "MANT",  "carga_kgf": 400,  "desplazamiento_mm": 9.20, "tiempo_min": 9}},
+  {"model": "load_tests.puntocarga", "pk": 19, "fields": {"ciclo": 3, "fase": "DESC",  "carga_kgf": 200,  "desplazamiento_mm": 5.40, "tiempo_min": 11}},
+  {"model": "load_tests.puntocarga", "pk": 20, "fields": {"ciclo": 3, "fase": "DESC",  "carga_kgf": 0,    "desplazamiento_mm": 1.20, "tiempo_min": 13}},
+
+  {"model": "load_tests.puntocarga", "pk": 21, "fields": {"ciclo": 4, "fase": "CARGA", "carga_kgf": 0,    "desplazamiento_mm": 1.20, "tiempo_min": 15}},
+  {"model": "load_tests.puntocarga", "pk": 22, "fields": {"ciclo": 4, "fase": "CARGA", "carga_kgf": 400,  "desplazamiento_mm": 9.50, "tiempo_min": 17}},
+  {"model": "load_tests.puntocarga", "pk": 23, "fields": {"ciclo": 4, "fase": "CARGA", "carga_kgf": 800,  "desplazamiento_mm": 18.50,"tiempo_min": 19}},
+  {"model": "load_tests.puntocarga", "pk": 24, "fields": {"ciclo": 4, "fase": "CARGA", "carga_kgf": 1200, "desplazamiento_mm": 28.50,"tiempo_min": 21}},
+  {"model": "load_tests.puntocarga", "pk": 25, "fields": {"ciclo": 4, "fase": "MANT",  "carga_kgf": 1200, "desplazamiento_mm": 31.20,"tiempo_min": 26}},
+  {"model": "load_tests.puntocarga", "pk": 26, "fields": {"ciclo": 4, "fase": "DESC",  "carga_kgf": 600,  "desplazamiento_mm": 18.00,"tiempo_min": 28}},
+  {"model": "load_tests.puntocarga", "pk": 27, "fields": {"ciclo": 4, "fase": "DESC",  "carga_kgf": 0,    "desplazamiento_mm": 11.50,"tiempo_min": 30}}
+]
