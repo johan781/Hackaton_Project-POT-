@@ -1,0 +1,400 @@
+{
+  "loadSets": [
+    {
+      "id": "T2P_A",
+      "label": "TRACKER 2P – TIPO A",
+      "steps": [
+        {
+          "paso": 1,
+          "tension_kN": 2.5,
+          "compresion_kN": 3.1,
+          "lateral_kN": 5.6
+        },
+        {
+          "paso": 3,
+          "tension_kN": 5,
+          "compresion_kN": 6.2,
+          "lateral_kN": 11.3
+        },
+        {
+          "paso": 5,
+          "tension_kN": 7.4,
+          "compresion_kN": 9.3,
+          "lateral_kN": 17
+        },
+        {
+          "paso": 7,
+          "tension_kN": 9.9,
+          "compresion_kN": 12.4,
+          "lateral_kN": 22.7
+        },
+        {
+          "paso": 9,
+          "tension_kN": 12.4,
+          "compresion_kN": 15.5,
+          "lateral_kN": 28.4
+        }
+      ]
+    },
+    {
+      "id": "T2P_B",
+      "label": "TRACKER 2P – TIPO B",
+      "steps": [
+        {
+          "paso": 1,
+          "tension_kN": 2.5,
+          "compresion_kN": 3.1,
+          "lateral_kN": 8.4
+        },
+        {
+          "paso": 3,
+          "tension_kN": 5,
+          "compresion_kN": 6.2,
+          "lateral_kN": 16.7
+        },
+        {
+          "paso": 5,
+          "tension_kN": 7.5,
+          "compresion_kN": 9.3,
+          "lateral_kN": 25.1
+        },
+        {
+          "paso": 7,
+          "tension_kN": 9.9,
+          "compresion_kN": 12.4,
+          "lateral_kN": 33.5
+        },
+        {
+          "paso": 9,
+          "tension_kN": 12.4,
+          "compresion_kN": 15.5,
+          "lateral_kN": 41.9
+        }
+      ]
+    },
+    {
+      "id": "T1P_A",
+      "label": "TRACKER 1P – TIPO A",
+      "steps": [
+        {
+          "paso": 1,
+          "tension_kN": 1.2,
+          "compresion_kN": 1.5,
+          "lateral_kN": 1.4
+        },
+        {
+          "paso": 3,
+          "tension_kN": 2.3,
+          "compresion_kN": 2.9,
+          "lateral_kN": 2.8
+        },
+        {
+          "paso": 5,
+          "tension_kN": 3.5,
+          "compresion_kN": 4.4,
+          "lateral_kN": 4.2
+        },
+        {
+          "paso": 7,
+          "tension_kN": 4.7,
+          "compresion_kN": 5.9,
+          "lateral_kN": 5.6
+        },
+        {
+          "paso": 9,
+          "tension_kN": 5.9,
+          "compresion_kN": 7.3,
+          "lateral_kN": 7
+        },
+        {
+          "paso": 11,
+          "tension_kN": 7,
+          "compresion_kN": 8.8,
+          "lateral_kN": 8.4
+        }
+      ]
+    },
+    {
+      "id": "T1P_B",
+      "label": "TRACKER 1P – TIPO B",
+      "steps": [
+        {
+          "paso": 1,
+          "tension_kN": 1.1,
+          "compresion_kN": 1.4,
+          "lateral_kN": 7.3
+        },
+        {
+          "paso": 3,
+          "tension_kN": 2.2,
+          "compresion_kN": 2.7,
+          "lateral_kN": 14.6
+        },
+        {
+          "paso": 5,
+          "tension_kN": 3.3,
+          "compresion_kN": 4.1,
+          "lateral_kN": 21.9
+        },
+        {
+          "paso": 7,
+          "tension_kN": 4.4,
+          "compresion_kN": 5.4,
+          "lateral_kN": 29.2
+        },
+        {
+          "paso": 9,
+          "tension_kN": 5.4,
+          "compresion_kN": 6.8,
+          "lateral_kN": 30.4
+        },
+        {
+          "paso": 11,
+          "tension_kN": 6.5,
+          "compresion_kN": 8.2,
+          "lateral_kN": 36.5
+        }
+      ]
+    },
+    {
+      "id": "T1P_v2_A",
+      "label": "TRACKER 1P v2 – TIPO A",
+      "steps": [
+        {
+          "paso": 1,
+          "tension_kN": 1.99,
+          "compresion_kN": 2.0895,
+          "lateral_kN": 2.1133
+        },
+        {
+          "paso": 3,
+          "tension_kN": 3.98,
+          "compresion_kN": 4.179,
+          "lateral_kN": 4.2265
+        },
+        {
+          "paso": 5,
+          "tension_kN": 5.97,
+          "compresion_kN": 6.2685,
+          "lateral_kN": 6.3398
+        },
+        {
+          "paso": 7,
+          "tension_kN": 7.96,
+          "compresion_kN": 8.358,
+          "lateral_kN": 8.453
+        },
+        {
+          "paso": 9,
+          "tension_kN": 9.95,
+          "compresion_kN": 10.4475,
+          "lateral_kN": 10.5663
+        },
+        {
+          "paso": 11,
+          "tension_kN": 11.94,
+          "compresion_kN": 12.537,
+          "lateral_kN": 12.6796
+        }
+      ]
+    },
+    {
+      "id": "T1P_v2_B",
+      "label": "TRACKER 1P v2 – TIPO B",
+      "steps": [
+        {
+          "paso": 1,
+          "tension_kN": 2.002,
+          "compresion_kN": 2.1945,
+          "lateral_kN": 2.6522
+        },
+        {
+          "paso": 3,
+          "tension_kN": 4.004,
+          "compresion_kN": 4.389,
+          "lateral_kN": 5.3044
+        },
+        {
+          "paso": 5,
+          "tension_kN": 6.006,
+          "compresion_kN": 6.5835,
+          "lateral_kN": 7.9566
+        },
+        {
+          "paso": 7,
+          "tension_kN": 8.008,
+          "compresion_kN": 8.778,
+          "lateral_kN": 10.6088
+        },
+        {
+          "paso": 9,
+          "tension_kN": 10.01,
+          "compresion_kN": 10.9725,
+          "lateral_kN": 13.2611
+        },
+        {
+          "paso": 11,
+          "tension_kN": 12.012,
+          "compresion_kN": 13.167,
+          "lateral_kN": 15.9133
+        }
+      ]
+    },
+    {
+      "id": "T2P_v2_A",
+      "label": "TRACKER 2P v2 – TIPO A",
+      "steps": [
+        {
+          "paso": 1,
+          "tension_kN": 1.99,
+          "compresion_kN": 2.0895,
+          "lateral_kN": 3.4601
+        },
+        {
+          "paso": 3,
+          "tension_kN": 3.98,
+          "compresion_kN": 4.179,
+          "lateral_kN": 6.9202
+        },
+        {
+          "paso": 5,
+          "tension_kN": 5.97,
+          "compresion_kN": 6.2685,
+          "lateral_kN": 10.3803
+        },
+        {
+          "paso": 7,
+          "tension_kN": 7.96,
+          "compresion_kN": 8.358,
+          "lateral_kN": 13.8404
+        },
+        {
+          "paso": 9,
+          "tension_kN": 9.95,
+          "compresion_kN": 10.4475,
+          "lateral_kN": 17.3006
+        },
+        {
+          "paso": 11,
+          "tension_kN": 11.94,
+          "compresion_kN": 12.537,
+          "lateral_kN": 20.7607
+        }
+      ]
+    },
+    {
+      "id": "T2P_v2_B",
+      "label": "TRACKER 2P v2 – TIPO B",
+      "steps": [
+        {
+          "paso": 1,
+          "tension_kN": 2.002,
+          "compresion_kN": 2.1945,
+          "lateral_kN": 4.3426
+        },
+        {
+          "paso": 3,
+          "tension_kN": 4.004,
+          "compresion_kN": 4.389,
+          "lateral_kN": 8.6851
+        },
+        {
+          "paso": 5,
+          "tension_kN": 6.006,
+          "compresion_kN": 6.5835,
+          "lateral_kN": 13.0277
+        },
+        {
+          "paso": 7,
+          "tension_kN": 8.008,
+          "compresion_kN": 8.778,
+          "lateral_kN": 17.3702
+        },
+        {
+          "paso": 9,
+          "tension_kN": 10.01,
+          "compresion_kN": 10.9725,
+          "lateral_kN": 21.7128
+        },
+        {
+          "paso": 11,
+          "tension_kN": 12.012,
+          "compresion_kN": 13.167,
+          "lateral_kN": 26.0553
+        }
+      ]
+    },
+    {
+      "id": "cfg_B",
+      "label": "Config. adicional – TIPO B",
+      "steps": [
+        {
+          "paso": 1,
+          "tension_kN": 2.5,
+          "compresion_kN": 3.1,
+          "lateral_kN": 7.3
+        },
+        {
+          "paso": 3,
+          "tension_kN": 5,
+          "compresion_kN": 6.2,
+          "lateral_kN": 14.6
+        },
+        {
+          "paso": 5,
+          "tension_kN": 7.5,
+          "compresion_kN": 9.3,
+          "lateral_kN": 21.9
+        },
+        {
+          "paso": 7,
+          "tension_kN": 9.9,
+          "compresion_kN": 12.4,
+          "lateral_kN": 29.2
+        },
+        {
+          "paso": 9,
+          "tension_kN": 12.4,
+          "compresion_kN": 15.5,
+          "lateral_kN": 36.5
+        }
+      ]
+    },
+    {
+      "id": "cfg_A",
+      "label": "Config. adicional – TIPO A",
+      "steps": [
+        {
+          "paso": 1,
+          "tension_kN": 2.5,
+          "compresion_kN": 3.1,
+          "lateral_kN": 5.6
+        },
+        {
+          "paso": 3,
+          "tension_kN": 5,
+          "compresion_kN": 6.2,
+          "lateral_kN": 11.3
+        },
+        {
+          "paso": 5,
+          "tension_kN": 7.4,
+          "compresion_kN": 9.3,
+          "lateral_kN": 17
+        },
+        {
+          "paso": 7,
+          "tension_kN": 9.9,
+          "compresion_kN": 12.4,
+          "lateral_kN": 22.7
+        },
+        {
+          "paso": 9,
+          "tension_kN": 12.4,
+          "compresion_kN": 15.5,
+          "lateral_kN": 28.4
+        }
+      ]
+    }
+  ]
+}

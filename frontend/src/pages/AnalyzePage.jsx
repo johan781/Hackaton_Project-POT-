@@ -71,6 +71,7 @@ export default function AnalyzePage() {
   const [saving, setSaving] = useState(false)
   const [savedId, setSavedId] = useState(null)
   const [exportingPdf, setExportingPdf] = useState(false)
+  const [pdfError, setPdfError] = useState(null)
   const [activeTab, setActiveTab] = useState('report') // report | debug
   const inputRef = useRef(null)
   const navigate = useNavigate()
@@ -148,9 +149,12 @@ export default function AnalyzePage() {
   const handlePdfExport = async () => {
     if (!analysis) return
     setExportingPdf(true)
+    setPdfError(null)
     const name = `POT_${(analysis.proyecto?.nombre || 'Informe').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`
     try {
       await exportToPdf('analysis-report-content', name)
+    } catch (e) {
+      setPdfError('Error al exportar PDF: ' + e.message)
     } finally {
       setExportingPdf(false)
     }
@@ -303,6 +307,12 @@ export default function AnalyzePage() {
               )}
             </div>
           </div>
+
+          {pdfError && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+              {pdfError}
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="flex gap-1 border-b border-gray-200">

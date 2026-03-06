@@ -1,18 +1,35 @@
 import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
+import html2canvas from 'html2canvas-pro'
 
 export async function exportToPdf(elementId, filename) {
   const element = document.getElementById(elementId)
   if (!element) throw new Error(`Element #${elementId} not found`)
+
+  // Capture SVG dimensions from the live DOM before cloning,
+  // because html2canvas clones the DOM and recharts SVGs lack explicit
+  // width/height attributes (they rely on CSS), which makes them render blank.
+  const svgDimensions = Array.from(element.querySelectorAll('svg')).map(svg => {
+    const rect = svg.getBoundingClientRect()
+    return { width: rect.width, height: rect.height }
+  })
 
   const canvas = await html2canvas(element, {
     scale: 2,
     useCORS: true,
     logging: false,
     backgroundColor: '#ffffff',
+    onclone: (_clonedDoc, clonedElement) => {
+      const clonedSvgs = Array.from(clonedElement.querySelectorAll('svg'))
+      clonedSvgs.forEach((svg, i) => {
+        const dims = svgDimensions[i]
+        if (dims && dims.width > 0) {
+          svg.setAttribute('width', String(dims.width))
+          svg.setAttribute('height', String(dims.height))
+        }
+      })
+    },
   })
 
-  const imgData = canvas.toDataURL('image/png')
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
   const pdfWidth = pdf.internal.pageSize.getWidth()
@@ -21,7 +38,6 @@ export async function exportToPdf(elementId, filename) {
   const imgHeight = canvas.height
   const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
   const scaledW = imgWidth * ratio
-  const scaledH = imgHeight * ratio
 
   // Paginate if content is taller than one A4 page
   let yPos = 0

@@ -197,16 +197,38 @@ def analyze_file(file_bytes: bytes, filename: str, api_key: str) -> dict:
     return _enrich(data)
 
 
+DISP_SATISFACTORIO  = 15.0   # mm — profundidad de hincado satisfactoria
+DISP_REDISENO       = 25.4   # mm — requiere rediseño estructural
+
+
+def _criterio_ensayo(disp_max: float, tipo: str = "") -> tuple[bool, str]:
+    """Return (cumple_criterio, estado_criterio) based on max displacement and test type.
+    Lateral loads have no amber zone — above 15 mm is directly requiere_rediseno.
+    """
+    if disp_max <= DISP_SATISFACTORIO:
+        return True, "satisfactorio"
+    if tipo == "carga_lateral":
+        return False, "requiere_rediseno"
+    if disp_max <= DISP_REDISENO:
+        return False, "no_cumple_deformaciones"
+    return False, "requiere_rediseno"
+
+
 def _enrich(data: dict) -> dict:
     """Add computed kN fields and compliance logic."""
     for punto in data.get("puntos", []):
         punto_ok = True
+        peor_estado = "satisfactorio"
+        estado_orden = ["satisfactorio", "no_cumple_deformaciones", "requiere_rediseno"]
+
         for ensayo in punto.get("ensayos", []):
             kgf_max = ensayo.get("carga_maxima_kgf") or 0
             disp_max = ensayo.get("desplazamiento_maximo_mm") or 0
 
             ensayo["carga_maxima_kn"] = round(kgf_max * KGF_TO_KN, 3)
-            ensayo["cumple_criterio"] = disp_max < 25.0
+            cumple, estado_criterio = _criterio_ensayo(disp_max, ensayo.get("tipo", ""))
+            ensayo["cumple_criterio"] = cumple
+            ensayo["estado_criterio"] = estado_criterio
 
             # Add kN to each data point + stiffness at that point
             for pt in ensayo.get("puntos", []):
@@ -215,10 +237,12 @@ def _enrich(data: dict) -> dict:
                 pt["fuerza_kn"] = round(kg * KGF_TO_KN, 4)
                 pt["rigidez_kn_mm"] = round(pt["fuerza_kn"] / disp, 4) if disp else None
 
-            if not ensayo["cumple_criterio"]:
+            if not cumple:
                 punto_ok = False
+            if estado_orden.index(estado_criterio) > estado_orden.index(peor_estado):
+                peor_estado = estado_criterio
 
         punto["cumple_criterio"] = punto_ok
-        punto["estado"] = "cumple" if punto_ok else "requiere_rediseno"
+        punto["estado"] = peor_estado
 
     return data
