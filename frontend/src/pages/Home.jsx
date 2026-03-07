@@ -16,7 +16,7 @@ export default function Home() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">POT Analytics & Tracker</h1>
+        <h1 className="text-2xl font-bold text-gray-800">POT Análisis</h1>
         <p className="text-gray-500 text-sm mt-1">Sistema de análisis de pruebas de hincabilidad y carga lateral</p>
       </div>
 

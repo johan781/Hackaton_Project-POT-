@@ -152,7 +152,10 @@ export default function AnalyzePage() {
     setPdfError(null)
     const name = `POT_${(analysis.proyecto?.nombre || 'Informe').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`
     try {
-      await exportToPdf('analysis-report-content', name)
+      // Create 'extra' metadata based on state available in AnalyzePage via AnalysisReport
+      // Since AnalysisReport manages the selected LoadSet locally, we can't easily export
+      // the true 'pct' from here without lifting state. For now, we export basic analysis data.
+      await exportToPdf(analysis, name)
     } catch (e) {
       setPdfError('Error al exportar PDF: ' + e.message)
     } finally {

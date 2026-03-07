@@ -8,16 +8,16 @@ import { ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertTriangle, Settings2
 
 // ─── Thresholds ────────────────────────────────────────────────────────────────
 const DISP_SATISFACTORIO = 15.0   // mm
-const DISP_REDISENO      = 25.4   // mm
+const DISP_REDISENO = 25.4   // mm
 
 // Estado order for "worst" comparison
 const ESTADO_ORDER = ['satisfactorio', 'no_cumple_deformaciones', 'requiere_rediseno']
 
 // ─── Test type metadata ───────────────────────────────────────────────────────
 const TIPO_META = {
-  tension_vertical:    { label: 'Tensión Vertical',    color: '#3B82F6', bg: 'bg-blue-50',   border: 'border-blue-200',   badge: 'bg-blue-100 text-blue-700',   loadKey: 'tension_kN' },
-  compresion_vertical: { label: 'Compresión Vertical',  color: '#F59E0B', bg: 'bg-amber-50',  border: 'border-amber-200',  badge: 'bg-amber-100 text-amber-700',  loadKey: 'compresion_kN' },
-  carga_lateral:       { label: 'Carga Lateral',        color: '#8B5CF6', bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700', loadKey: 'lateral_kN' },
+  tension_vertical: { label: 'Tensión Vertical', color: '#3B82F6', bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700', loadKey: 'tension_kN' },
+  compresion_vertical: { label: 'Compresión Vertical', color: '#F59E0B', bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700', loadKey: 'compresion_kN' },
+  carga_lateral: { label: 'Carga Lateral', color: '#8B5CF6', bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700', loadKey: 'lateral_kN' },
 }
 
 // ─── Criteria helpers (ONLY used when a load set is selected) ─────────────────
@@ -41,10 +41,10 @@ const CRITERIO_INFO = {
 
 function estadoFromDisp(disp, tipo) {
   if (disp === null) return 'requiere_rediseno'   // force not reached → fail
-  if (disp <= DISP_SATISFACTORIO)  return 'satisfactorio'
+  if (disp <= DISP_SATISFACTORIO) return 'satisfactorio'
   // Lateral loads: no amber zone — directly requiere rediseño above 15 mm
-  if (tipo === 'carga_lateral')    return 'requiere_rediseno'
-  if (disp <= DISP_REDISENO)       return 'no_cumple_deformaciones'
+  if (tipo === 'carga_lateral') return 'requiere_rediseno'
+  if (disp <= DISP_REDISENO) return 'no_cumple_deformaciones'
   return 'requiere_rediseno'
 }
 
@@ -55,9 +55,9 @@ function worstEstado(estados) {
 }
 
 function CriterioIcon({ estado, cls = 'w-4 h-4' }) {
-  if (estado === 'satisfactorio')          return <CheckCircle2  className={`${cls} text-green-500 flex-shrink-0`} />
+  if (estado === 'satisfactorio') return <CheckCircle2 className={`${cls} text-green-500 flex-shrink-0`} />
   if (estado === 'no_cumple_deformaciones') return <AlertTriangle className={`${cls} text-amber-500 flex-shrink-0`} />
-  return                                          <XCircle       className={`${cls} text-red-500 flex-shrink-0`} />
+  return <XCircle className={`${cls} text-red-500 flex-shrink-0`} />
 }
 
 // ─── Interpolation ────────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ function buildRefRows(pts, steps, loadKey, tipo) {
       const designForce = +(s[loadKey] ?? 0)
       if (designForce <= 0) return null
       const interpDisp = interpolateDisp(pts, designForce)
-      const estado     = estadoFromDisp(interpDisp, tipo)
+      const estado = estadoFromDisp(interpDisp, tipo)
       return { paso: s.paso, designForce, interpDisp, estado, criterio: CRITERIO_INFO[estado] }
     })
     .filter(Boolean)
@@ -113,9 +113,9 @@ function RefCompareTable({ rows, color }) {
                 </td>
                 <td className="px-3 py-1 text-center">
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${c.bg} ${c.color}`}>
-                    {row.estado === 'satisfactorio'          && <CheckCircle2  className="w-3 h-3" />}
+                    {row.estado === 'satisfactorio' && <CheckCircle2 className="w-3 h-3" />}
                     {row.estado === 'no_cumple_deformaciones' && <AlertTriangle className="w-3 h-3" />}
-                    {row.estado === 'requiere_rediseno'       && <XCircle       className="w-3 h-3" />}
+                    {row.estado === 'requiere_rediseno' && <XCircle className="w-3 h-3" />}
                     {c.short}
                   </span>
                 </td>
@@ -159,61 +159,63 @@ function LoadDispChart({ ensayo, refRows }) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={230}>
-      <LineChart margin={{ top: 10, right: 30, left: 0, bottom: 24 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis
-          dataKey="x"
-          type="number"
-          domain={[0, Math.ceil(maxX * 1.1)]}
-          label={{ value: 'Desplazamiento (mm)', position: 'insideBottom', offset: -12, fontSize: 10 }}
-          tick={{ fontSize: 10 }}
-          allowDuplicatedCategory={false}
-        />
-        <YAxis
-          domain={[0, Math.ceil(maxY * 1.15)]}
-          label={{ value: 'Fuerza (kN)', angle: -90, position: 'insideLeft', fontSize: 10, dy: 40 }}
-          tick={{ fontSize: 10 }}
-        />
-        <Tooltip
-          formatter={(v, name) => [`${v} kN`, name]}
-          labelFormatter={(l) => `δ = ${l} mm`}
-        />
-        <Legend verticalAlign="top" height={26} iconSize={10} wrapperStyle={{ fontSize: 10 }} />
-
-        {/* Displacement limit lines (always visible as visual reference) */}
-        <ReferenceLine x={DISP_SATISFACTORIO} stroke="#F59E0B" strokeDasharray="5 3" strokeWidth={1.5}
-          label={{ value: `${DISP_SATISFACTORIO} mm`, fill: '#92400E', fontSize: 9, position: 'insideTopLeft' }} />
-        <ReferenceLine x={DISP_REDISENO} stroke="#EF4444" strokeDasharray="5 3" strokeWidth={1.5}
-          label={{ value: `${DISP_REDISENO} mm`, fill: '#991B1B', fontSize: 9, position: 'insideTopLeft' }} />
-
-        {/* Measured curve */}
-        <Line
-          data={pts}
-          dataKey="y"
-          name="Curva medida"
-          stroke={meta.color}
-          strokeWidth={2}
-          dot={{ r: 3, fill: meta.color }}
-          activeDot={{ r: 5 }}
-          connectNulls
-        />
-
-        {/* Reference load points projected onto the curve */}
-        {refPoints.length > 0 && (
-          <Line
-            data={refPoints}
-            dataKey="ref"
-            name="Escalones diseño"
-            stroke={meta.color}
-            strokeWidth={0}
-            dot={<CustomDot />}
-            activeDot={{ r: 7, strokeWidth: 2 }}
-            legendType="circle"
+    <div id={`chart-${ensayo.punto_id}-${ensayo.tipo}`} style={{ width: '100%', height: '230px' }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart margin={{ top: 10, right: 30, left: 0, bottom: 24 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <XAxis
+            dataKey="x"
+            type="number"
+            domain={[0, Math.ceil(maxX * 1.1)]}
+            label={{ value: 'Desplazamiento (mm)', position: 'insideBottom', offset: -12, fontSize: 10 }}
+            tick={{ fontSize: 10 }}
+            allowDuplicatedCategory={false}
           />
-        )}
-      </LineChart>
-    </ResponsiveContainer>
+          <YAxis
+            domain={[0, Math.ceil(maxY * 1.15)]}
+            label={{ value: 'Fuerza (kN)', angle: -90, position: 'insideLeft', fontSize: 10, dy: 40 }}
+            tick={{ fontSize: 10 }}
+          />
+          <Tooltip
+            formatter={(v, name) => [`${v} kN`, name]}
+            labelFormatter={(l) => `δ = ${l} mm`}
+          />
+          <Legend verticalAlign="top" height={26} iconSize={10} wrapperStyle={{ fontSize: 10 }} />
+
+          {/* Displacement limit lines (always visible as visual reference) */}
+          <ReferenceLine x={DISP_SATISFACTORIO} stroke="#F59E0B" strokeDasharray="5 3" strokeWidth={1.5}
+            label={{ value: `${DISP_SATISFACTORIO} mm`, fill: '#92400E', fontSize: 9, position: 'insideTopLeft' }} />
+          <ReferenceLine x={DISP_REDISENO} stroke="#EF4444" strokeDasharray="5 3" strokeWidth={1.5}
+            label={{ value: `${DISP_REDISENO} mm`, fill: '#991B1B', fontSize: 9, position: 'insideTopLeft' }} />
+
+          {/* Measured curve */}
+          <Line
+            data={pts}
+            dataKey="y"
+            name="Curva medida"
+            stroke={meta.color}
+            strokeWidth={2}
+            dot={{ r: 3, fill: meta.color }}
+            activeDot={{ r: 5 }}
+            connectNulls
+          />
+
+          {/* Reference load points projected onto the curve */}
+          {refPoints.length > 0 && (
+            <Line
+              data={refPoints}
+              dataKey="ref"
+              name="Escalones diseño"
+              stroke={meta.color}
+              strokeWidth={0}
+              dot={<CustomDot />}
+              activeDot={{ r: 7, strokeWidth: 2 }}
+              legendType="circle"
+            />
+          )}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   )
 }
 
@@ -259,9 +261,9 @@ function EnsayoCard({ ensayo, selectedLoadSet }) {
   }))
 
   // Comparison rows and worst estado — ONLY when a load set is selected
-  const refRows  = selectedLoadSet ? buildRefRows(measuredPts, selectedLoadSet.steps, meta.loadKey, ensayo.tipo) : []
-  const hasRef   = refRows.length > 0
-  const estado   = hasRef ? worstEstado(refRows.map(r => r.estado)) : null
+  const refRows = selectedLoadSet ? buildRefRows(measuredPts, selectedLoadSet.steps, meta.loadKey, ensayo.tipo) : []
+  const hasRef = refRows.length > 0
+  const estado = hasRef ? worstEstado(refRows.map(r => r.estado)) : null
   const criterio = estado ? CRITERIO_INFO[estado] : null
 
   const maxDesign = hasRef ? refRows.at(-1).designForce : null
@@ -310,7 +312,7 @@ function EnsayoCard({ ensayo, selectedLoadSet }) {
 
       {/* Chart */}
       <div className="px-4 pb-2">
-        <LoadDispChart ensayo={ensayo} refRows={refRows} />
+        <LoadDispChart ensayo={{ ...ensayo, punto_id: ensayo.punto_id }} refRows={refRows} />
       </div>
 
       {/* Comparison table — ONLY when a load set is selected */}
@@ -342,28 +344,28 @@ function PuntoCard({ punto, selectedLoadSet }) {
   // Compute per-ensayo estado from refRows — ONLY when a load set is selected
   const ensayoEstados = selectedLoadSet
     ? ensayos.map(e => {
-        const meta = TIPO_META[e.tipo] || TIPO_META.tension_vertical
-        const measPts = (e.puntos || []).map(p => ({
-          x: p.desplazamiento_mm ?? 0,
-          y: +(((p.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
-        }))
-        const rows = buildRefRows(measPts, selectedLoadSet.steps, meta.loadKey, e.tipo)
-        return rows.length ? worstEstado(rows.map(r => r.estado)) : 'satisfactorio'
-      })
+      const meta = TIPO_META[e.tipo] || TIPO_META.tension_vertical
+      const measPts = (e.puntos || []).map(p => ({
+        x: p.desplazamiento_mm ?? 0,
+        y: +(((p.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
+      }))
+      const rows = buildRefRows(measPts, selectedLoadSet.steps, meta.loadKey, e.tipo)
+      return rows.length ? worstEstado(rows.map(r => r.estado)) : 'satisfactorio'
+    })
     : []
 
-  const hasRef    = selectedLoadSet !== null
+  const hasRef = selectedLoadSet !== null
   const puntoEstado = hasRef && ensayoEstados.length
     ? worstEstado(ensayoEstados)
     : null
 
   const borderCls = !hasRef ? 'border-gray-200' :
-    puntoEstado === 'satisfactorio'          ? 'border-green-200' :
-    puntoEstado === 'no_cumple_deformaciones' ? 'border-amber-200' : 'border-red-200'
+    puntoEstado === 'satisfactorio' ? 'border-green-200' :
+      puntoEstado === 'no_cumple_deformaciones' ? 'border-amber-200' : 'border-red-200'
 
   const headBg = !hasRef ? 'bg-gray-50' :
-    puntoEstado === 'satisfactorio'          ? 'bg-green-50'  :
-    puntoEstado === 'no_cumple_deformaciones' ? 'bg-amber-50'  : 'bg-red-50'
+    puntoEstado === 'satisfactorio' ? 'bg-green-50' :
+      puntoEstado === 'no_cumple_deformaciones' ? 'bg-amber-50' : 'bg-red-50'
 
   // TrafficLight estado: show computed if hasRef, else 'no_evaluado'
   const tlEstado = hasRef && puntoEstado ? puntoEstado : 'no_evaluado'
@@ -429,7 +431,7 @@ function PuntoCard({ punto, selectedLoadSet }) {
         <div className="p-5 space-y-5">
           {ensayos.length === 0
             ? <div className="text-gray-400 text-sm text-center py-4">Sin datos de ensayo</div>
-            : ensayos.map(e => <EnsayoCard key={e.tipo} ensayo={e} selectedLoadSet={selectedLoadSet} />)
+            : ensayos.map(e => <EnsayoCard key={e.tipo} ensayo={{ ...e, punto_id: punto.punto_id }} selectedLoadSet={selectedLoadSet} />)
           }
         </div>
       )}
@@ -467,14 +469,14 @@ function LoadSetSelector({ loadSets, selectedId, onChange }) {
 // ─── Main report component ────────────────────────────────────────────────────
 export default function AnalysisReport({ analysis }) {
   const { proyecto, puntos = [] } = analysis
-  const [loadSets, setLoadSets]     = useState([])
+  const [loadSets, setLoadSets] = useState([])
   const [selectedId, setSelectedId] = useState('')
 
   useEffect(() => {
     fetch('/cargas_defecto.json')
       .then(r => r.json())
       .then(d => setLoadSets(d.loadSets || []))
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
   const selectedLoadSet = loadSets.find(l => l.id === selectedId) || null
@@ -484,24 +486,24 @@ export default function AnalysisReport({ analysis }) {
   // Per-punto computed estados (only when a load set is selected)
   const puntoEstadoMap = hasRef
     ? Object.fromEntries(puntos.map(p => {
-        const ensayoEstados = (p.ensayos || []).map(e => {
-          const meta = TIPO_META[e.tipo] || TIPO_META.tension_vertical
-          const measPts = (e.puntos || []).map(pt => ({
-            x: pt.desplazamiento_mm ?? 0,
-            y: +(((pt.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
-          }))
-          const rows = buildRefRows(measPts, selectedLoadSet.steps, meta.loadKey, e.tipo)
-          return rows.length ? worstEstado(rows.map(r => r.estado)) : 'satisfactorio'
-        })
-        return [p.punto_id, ensayoEstados.length ? worstEstado(ensayoEstados) : 'satisfactorio']
-      }))
+      const ensayoEstados = (p.ensayos || []).map(e => {
+        const meta = TIPO_META[e.tipo] || TIPO_META.tension_vertical
+        const measPts = (e.puntos || []).map(pt => ({
+          x: pt.desplazamiento_mm ?? 0,
+          y: +(((pt.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
+        }))
+        const rows = buildRefRows(measPts, selectedLoadSet.steps, meta.loadKey, e.tipo)
+        return rows.length ? worstEstado(rows.map(r => r.estado)) : 'satisfactorio'
+      })
+      return [p.punto_id, ensayoEstados.length ? worstEstado(ensayoEstados) : 'satisfactorio']
+    }))
     : {}
 
   const allEstados = Object.values(puntoEstadoMap)
-  const satisf   = hasRef ? allEstados.filter(e => e === 'satisfactorio').length : null
+  const satisf = hasRef ? allEstados.filter(e => e === 'satisfactorio').length : null
   const noDeform = hasRef ? allEstados.filter(e => e === 'no_cumple_deformaciones').length : null
   const rediseno = hasRef ? allEstados.filter(e => e === 'requiere_rediseno').length : null
-  const pct      = hasRef && satisf !== null ? Math.round((satisf / puntos.length) * 100) : null
+  const pct = hasRef && satisf !== null ? Math.round((satisf / puntos.length) * 100) : null
 
   return (
     <div className="space-y-6">
@@ -647,6 +649,30 @@ export default function AnalysisReport({ analysis }) {
         <h3 className="font-semibold text-gray-700">Detalle por Punto</h3>
         {puntos.map(p => (
           <PuntoCard key={p.punto_id} punto={p} selectedLoadSet={selectedLoadSet} />
+        ))}
+      </div>
+
+      {/* 
+        Contenedor oculto: renderiza SIEMPRE todas las gráficas para que exportToPdf 
+        pueda tomarlas con html2canvas sin importar si el usuario colapsó las tarjetitas. 
+      */}
+      <div style={{ position: 'absolute', top: 0, left: '-9999px', width: '800px', pointerEvents: 'none' }}>
+        {puntos.map(p => (
+          <div key={`pdf-hidden-${p.punto_id}`}>
+            {(p.ensayos || []).map(e => {
+              const meta = TIPO_META[e.tipo] || TIPO_META.tension_vertical
+              const measPts = (e.puntos || []).map(pt => ({
+                x: pt.desplazamiento_mm ?? 0,
+                y: +(((pt.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
+              }))
+              const refRows = selectedLoadSet ? buildRefRows(measPts, selectedLoadSet.steps, meta.loadKey, e.tipo) : []
+              return (
+                <div key={e.tipo} id={`pdf-chart-${p.punto_id}-${e.tipo}`} style={{ width: '800px', height: '400px', backgroundColor: '#fff', padding: '20px' }}>
+                  <LoadDispChart ensayo={{ ...e, punto_id: p.punto_id }} refRows={refRows} />
+                </div>
+              )
+            })}
+          </div>
         ))}
       </div>
     </div>

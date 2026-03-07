@@ -40,7 +40,7 @@ export default function ProjectDetail() {
     setPdfError(null)
     const name = `POT_${(analysis.proyecto?.nombre || proyecto?.nombre || 'Informe').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`
     try {
-      await exportToPdf('project-report-content', name)
+      await exportToPdf(analysis, name)
     } catch (e) {
       setPdfError('Error al exportar PDF: ' + e.message)
     } finally {
