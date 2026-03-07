@@ -547,7 +547,7 @@ export default function AnalysisReport({ analysis }) {
           </div>
         </div>
         <div className="bg-red-50 rounded-xl border border-red-200 p-4 text-center">
-          <div className="text-2xl font-bold text-gray-900">{noC}</div>
+          <div className="text-2xl font-bold text-gray-900">{noDeform ?? '—'}</div>
           <div className="text-xs text-gray-500 mt-1">Requieren rediseño</div>
         </div>
         <div className={`rounded-xl border p-4 text-center ${hasRef ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
@@ -623,6 +623,7 @@ export default function AnalysisReport({ analysis }) {
                     {['tension_vertical', 'compresion_vertical', 'carga_lateral'].map(tipo => {
                       const e = byTipo[tipo]
                       if (!e) return <td key={tipo} className="px-3 py-2 text-center text-gray-300 text-xs">N/A</td>
+                      const over = (e.desplazamiento_maximo_mm ?? 0) >= 25;
                       return (
                         <td key={tipo} className="px-3 py-2 text-center">
                           <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${over ? 'bg-red-100 text-gray-900' : 'bg-green-100 text-green-700'}`}>
