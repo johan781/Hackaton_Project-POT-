@@ -3,7 +3,7 @@ import {
   ReferenceLine, ResponsiveContainer,
 } from 'recharts'
 
-const FASE_COLORS = { CARGA: '#3B82F6', MANT: '#10B981', DESC: '#EF4444' }
+const FASE_COLORS = { CARGA: '#fd9c10', MANT: '#797979', DESC: '#1a1a1a' }
 const KGF_TO_KN = 0.00980665
 
 export default function LoadDisplacementChart({ ciclos = [] }) {

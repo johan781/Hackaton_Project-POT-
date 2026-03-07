@@ -1,6 +1,6 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer } from 'recharts'
 
-const COLORS = { Suave: '#22C55E', Medio: '#EAB308', Duro: '#F97316', Rechazo: '#EF4444' }
+const COLORS = { Suave: '#797979', Medio: '#fd9c10', Duro: '#1a1a1a', Rechazo: '#000000' }
 
 export default function DrivingChart({ tramos = [] }) {
   if (!tramos.length) {

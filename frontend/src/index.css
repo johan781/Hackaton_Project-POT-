@@ -1,9 +1,87 @@
 @import "tailwindcss";
 
+@theme {
+  /* Primary accents (mapped from blue to brand #fd9c10) */
+  --color-blue-50: #fff5e6;
+  --color-blue-100: #ffe6cc;
+  --color-blue-200: #ffcc99;
+  --color-blue-300: #ffd699;
+  --color-blue-400: #ffb84d;
+  --color-blue-500: #ffa31a;
+  --color-blue-600: #fd9c10;
+  --color-blue-700: #cc7a00;
+  --color-blue-800: #995c00;
+  --color-blue-900: #4d2e00;
+
+  /* Red/Error mapped to Brand Orange tones */
+  --color-red-50: #fff5e6;
+  --color-red-100: #ffe6cc;
+  --color-red-200: #ffcc99;
+  --color-red-300: #ffd699;
+  --color-red-400: #ffb84d;
+  --color-red-500: #ffa31a;
+  --color-red-600: #fd9c10;
+  --color-red-700: #cc7a00;
+  --color-red-800: #995c00;
+  --color-red-900: #4d2e00;
+
+  /* Green/Success mapped to Brand Dark scale (#1a1a1a / #000000) */
+  --color-green-50: #fbfbfb;
+  --color-green-100: #f2f2f2;
+  --color-green-200: #d9d9d9;
+  --color-green-300: #bfbfbf;
+  --color-green-400: #a6a6a6;
+  --color-green-500: #797979;
+  --color-green-600: #1a1a1a;
+  --color-green-700: #000000;
+  --color-green-800: #000000;
+  --color-green-900: #000000;
+
+  /* Yellow/Warning mapped to Brand Gray #797979 */
+  --color-yellow-50: #fbfbfb;
+  --color-yellow-100: #f2f2f2;
+  --color-yellow-200: #d9d9d9;
+  --color-yellow-500: #797979;
+  --color-yellow-600: #797979;
+  --color-amber-50: #fbfbfb;
+  --color-amber-100: #f2f2f2;
+  --color-amber-200: #d9d9d9;
+  --color-amber-500: #797979;
+  --color-amber-600: #797979;
+
+  /* Neutrals (replacing gray context with manual's neutral shades) */
+  --color-gray-50: #fbfbfb;
+  --color-gray-100: #f2f2f2;
+  --color-gray-200: #d9d9d9;
+  --color-gray-300: #bfbfbf;
+  --color-gray-400: #a6a6a6;
+  --color-gray-500: #797979;
+  --color-gray-600: #595959;
+  --color-gray-700: #404040;
+  --color-gray-800: #1a1a1a;
+  --color-gray-900: #000000;
+  --color-gray-950: #000000;
+
+  /* Component shapes: "cuadrados con poco round" */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 4px;
+  --radius-3xl: 4px;
+  --radius: 4px;
+
+  /* Additional neutral shades to map to background */
+  --color-slate-50: #fbfbfb;
+  --color-slate-100: #f2f2f2;
+  --color-slate-900: #000000;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #f1f5f9;
-  font-family: system-ui, -apple-system, sans-serif;
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-800);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
 }

@@ -169,7 +169,7 @@ export default function AnalyzePage() {
     <div className="max-w-5xl mx-auto p-6 space-y-6">
       {/* Page title */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Análisis de Archivo POT</h1>
+        <h1 className="text-2xl font-bold text-gray-800">ForceInsights</h1>
         <p className="text-sm text-gray-500 mt-1">
           Carga un archivo PDF escaneado, Excel o TXT con datos Pull Out Test — el agente extrae y analiza todo automáticamente.
         </p>
@@ -246,7 +246,7 @@ export default function AnalyzePage() {
             {status === 'uploading' || status === 'analyzing'
               ? <Loader2 className="w-4 h-4 animate-spin" />
               : <Upload className="w-4 h-4" />}
-            {status === 'uploading' ? 'Enviando...' : status === 'analyzing' ? 'Analizando...' : 'Analizar archivo'}
+            {status === 'uploading' ? 'Enviando...' : status === 'analyzing' ? 'Analizando...' : 'Subir a ForceInsights'}
           </button>
           {file && status === 'idle' && (
             <button onClick={handleDiscard}

@@ -3,11 +3,11 @@ export default function TrafficLight({ estado, size = 'md' }) {
   const dot = sizes[size] || sizes.md
 
   const config = {
-    satisfactorio:           { color: 'bg-green-500',  label: 'Hincado satisfactorio',       text: 'text-green-700' },
-    cumple:                  { color: 'bg-green-500',  label: 'Cumple',                       text: 'text-green-700' },
-    no_cumple_deformaciones: { color: 'bg-amber-500',  label: 'No cumple deformaciones',      text: 'text-amber-700' },
-    requiere_rediseno:       { color: 'bg-red-500',    label: 'Requiere rediseño',             text: 'text-red-700' },
-    no_evaluado:             { color: 'bg-gray-400',   label: 'Sin evaluar',                  text: 'text-gray-500' },
+    satisfactorio: { color: 'bg-green-500', label: 'Hincado satisfactorio', text: 'text-green-700' },
+    cumple: { color: 'bg-green-500', label: 'Cumple', text: 'text-green-700' },
+    no_cumple_deformaciones: { color: 'bg-amber-500', label: 'No cumple deformaciones', text: 'text-amber-700' },
+    requiere_rediseno: { color: 'bg-red-500', label: 'Requiere rediseño', text: 'text-red-700' },
+    no_evaluado: { color: 'bg-gray-400', label: 'Sin evaluar', text: 'text-gray-500' },
   }
 
   const cfg = config[estado] || config.no_evaluado

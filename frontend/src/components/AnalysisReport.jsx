@@ -15,9 +15,9 @@ const ESTADO_ORDER = ['satisfactorio', 'no_cumple_deformaciones', 'requiere_redi
 
 // ─── Test type metadata ───────────────────────────────────────────────────────
 const TIPO_META = {
-  tension_vertical: { label: 'Tensión Vertical', color: '#3B82F6', bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700', loadKey: 'tension_kN' },
-  compresion_vertical: { label: 'Compresión Vertical', color: '#F59E0B', bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700', loadKey: 'compresion_kN' },
-  carga_lateral: { label: 'Carga Lateral', color: '#8B5CF6', bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700', loadKey: 'lateral_kN' },
+  tension_vertical: { label: 'Tensión Vertical', color: '#fd9c10', bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-gray-900' },
+  compresion_vertical: { label: 'Compresión Vertical', color: '#797979', bg: 'bg-gray-100', border: 'border-gray-300', badge: 'bg-gray-200 text-gray-700' },
+  carga_lateral: { label: 'Carga Lateral', color: '#1a1a1a', bg: 'bg-gray-200', border: 'border-gray-400', badge: 'bg-gray-300 text-gray-800' },
 }
 
 // ─── Criteria helpers (ONLY used when a load set is selected) ─────────────────
@@ -234,15 +234,20 @@ function EnsayoTable({ puntos = [] }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {puntos.map((p, i) => (
-            <tr key={i}>
-              <td className="px-3 py-1 text-center text-gray-400">{i + 1}</td>
-              <td className="px-3 py-1 text-right font-mono">{p.desplazamiento_mm ?? '—'}</td>
-              <td className="px-3 py-1 text-right font-mono">{p.fuerza_kg ?? '—'}</td>
-              <td className="px-3 py-1 text-right font-mono">{p.fuerza_kn ?? '—'}</td>
-              <td className="px-3 py-1 text-right font-mono text-gray-400">{p.rigidez_kn_mm ?? '—'}</td>
-            </tr>
-          ))}
+          {puntos.map((p, i) => {
+            const overLimit = (p.desplazamiento_mm ?? 0) >= 25
+            return (
+              <tr key={i} className={overLimit ? 'bg-red-50' : ''}>
+                <td className="px-3 py-1 text-center text-gray-400">{i + 1}</td>
+                <td className={`px-3 py-1 text-right font-mono ${overLimit ? 'text-gray-900 font-bold' : ''}`}>
+                  {p.desplazamiento_mm ?? '—'}
+                </td>
+                <td className="px-3 py-1 text-right font-mono">{p.fuerza_kg ?? '—'}</td>
+                <td className="px-3 py-1 text-right font-mono">{p.fuerza_kn ?? '—'}</td>
+                <td className="px-3 py-1 text-right font-mono text-gray-400">{p.rigidez_kn_mm ?? '—'}</td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
@@ -541,14 +546,9 @@ export default function AnalysisReport({ analysis }) {
             ≤ {DISP_SATISFACTORIO} mm
           </div>
         </div>
-        <div className={`rounded-xl border p-4 text-center ${hasRef ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
-          <div className={`text-2xl font-bold ${hasRef ? 'text-amber-600' : 'text-gray-300'}`}>
-            {noDeform ?? '—'}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">No cumple deformaciones</div>
-          <div className={`text-xs font-medium mt-0.5 ${hasRef ? 'text-amber-600' : 'text-gray-300'}`}>
-            {DISP_SATISFACTORIO}–{DISP_REDISENO} mm
-          </div>
+        <div className="bg-red-50 rounded-xl border border-red-200 p-4 text-center">
+          <div className="text-2xl font-bold text-gray-900">{noC}</div>
+          <div className="text-xs text-gray-500 mt-1">Requieren rediseño</div>
         </div>
         <div className={`rounded-xl border p-4 text-center ${hasRef ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
           <div className={`text-2xl font-bold ${hasRef ? 'text-red-600' : 'text-gray-300'}`}>
@@ -625,8 +625,8 @@ export default function AnalysisReport({ analysis }) {
                       if (!e) return <td key={tipo} className="px-3 py-2 text-center text-gray-300 text-xs">N/A</td>
                       return (
                         <td key={tipo} className="px-3 py-2 text-center">
-                          <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
-                            {e.carga_maxima_kn ?? '?'} kN
+                          <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${over ? 'bg-red-100 text-gray-900' : 'bg-green-100 text-green-700'}`}>
+                            {e.desplazamiento_maximo_mm ?? '?'} mm / {e.carga_maxima_kn ?? '?'} kN
                           </span>
                         </td>
                       )

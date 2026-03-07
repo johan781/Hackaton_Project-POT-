@@ -77,7 +77,7 @@ export default function ProjectDetail() {
                 Excel
               </button>
               <button onClick={handlePdfExport} disabled={exportingPdf}
-                className="flex items-center gap-1.5 text-sm border border-red-200 text-red-700 px-3 py-2 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors">
+                className="flex items-center gap-1.5 text-sm border border-red-200 text-gray-900 px-3 py-2 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors">
                 {exportingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
                 PDF
               </button>
@@ -87,7 +87,7 @@ export default function ProjectDetail() {
       </div>
 
       {pdfError && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+        <div className="text-sm text-gray-900 bg-red-50 border border-red-200 rounded-lg p-3">
           {pdfError}
         </div>
       )}
@@ -100,7 +100,7 @@ export default function ProjectDetail() {
         <div className="bg-white rounded-xl border border-gray-200 p-10 text-center text-gray-400">
           <p className="text-lg font-medium mb-1">Sin análisis guardado</p>
           <p className="text-sm">Este proyecto fue creado manualmente o con una versión anterior del sistema.</p>
-          <p className="text-sm mt-1">Usa <span className="font-semibold text-blue-600">Analizar archivo</span> y guarda el resultado para ver el informe completo aquí.</p>
+          <p className="text-sm mt-1">Usa <span className="font-semibold text-gray-900">ForceInsights</span> y guarda el resultado para ver el informe completo aquí.</p>
         </div>
       )}
     </div>
