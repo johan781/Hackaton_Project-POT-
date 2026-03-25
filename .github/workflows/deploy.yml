@@ -1,0 +1,38 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches:
+      - main          # cambia a tu rama de despliegue
+
+jobs:
+  deploy:
+    name: Deploy via SSH
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy en la instancia EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key:      ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout:  10m
+          script: |
+            set -e
+            cd ~/apps/Hackaton_POT
+
+            echo "── Pull del repositorio ──"
+            git pull origin main
+
+            echo "── Reconstruyendo y levantando contenedores ──"
+            docker compose pull --quiet 2>/dev/null || true
+            docker compose up -d --build --remove-orphans
+
+            echo "── Esperando que el backend arranque ──"
+            sleep 10
+
+            echo "── Limpiando imágenes viejas ──"
+            docker image prune -f
+
+            echo "✅ Deploy completado"
