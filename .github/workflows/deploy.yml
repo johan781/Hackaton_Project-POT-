@@ -20,7 +20,7 @@ jobs:
           timeout:  10m
           script: |
             set -e
-            cd ~/apps/Hackaton_POT
+            cd ~/apps/Hackaton_Project-POT-
 
             echo "── Pull del repositorio ──"
             git pull origin main
