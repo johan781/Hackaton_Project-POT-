@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react'
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer, Legend,
 } from 'recharts'
 import TrafficLight from './TrafficLight'
-import { ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertTriangle, Settings2, Minus } from 'lucide-react'
+import { ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertTriangle, Settings2, Minus, Info } from 'lucide-react'
 
 // ─── Thresholds ────────────────────────────────────────────────────────────────
 const DISP_SATISFACTORIO = 15.0   // mm
 const DISP_REDISENO = 25.4   // mm
 
-// Estado order for "worst" comparison
-const ESTADO_ORDER = ['satisfactorio', 'no_cumple_deformaciones', 'requiere_rediseno']
+// Estado order for "worst" comparison (ascending severity)
+const ESTADO_ORDER = ['satisfactorio', 'margen_fuerza', 'no_cumple_deformaciones', 'requiere_rediseno']
 
 // ─── Test type metadata ───────────────────────────────────────────────────────
 const TIPO_META = {
@@ -25,24 +25,28 @@ const CRITERIO_INFO = {
   satisfactorio: {
     label: 'Profundidad de hincado satisfactoria',
     short: `≤ ${DISP_SATISFACTORIO} mm`,
-    color: 'text-green-700', bg: 'bg-green-100', icon: 'ok',
+    color: 'text-green-700', bg: 'bg-green-100',
+  },
+  margen_fuerza: {
+    label: 'Carga de diseño no alcanzada — desplazamiento dentro del límite',
+    short: 'Margen de fuerza',
+    color: 'text-blue-700', bg: 'bg-blue-100',
   },
   no_cumple_deformaciones: {
-    label: `No cumple criterio de deformaciones — requiere rediseño`,
+    label: 'No cumple criterio de deformaciones',
     short: `${DISP_SATISFACTORIO}–${DISP_REDISENO} mm`,
-    color: 'text-amber-700', bg: 'bg-amber-100', icon: 'warn',
+    color: 'text-amber-700', bg: 'bg-amber-100',
   },
   requiere_rediseno: {
     label: 'Requiere rediseño',
     short: `> ${DISP_REDISENO} mm`,
-    color: 'text-red-700', bg: 'bg-red-100', icon: 'fail',
+    color: 'text-red-700', bg: 'bg-red-100',
   },
 }
 
 function estadoFromDisp(disp, tipo) {
-  if (disp === null) return 'requiere_rediseno'   // force not reached → fail
+  if (disp === null) return 'requiere_rediseno'
   if (disp <= DISP_SATISFACTORIO) return 'satisfactorio'
-  // Lateral loads: no amber zone — directly requiere rediseño above 15 mm
   if (tipo === 'carga_lateral') return 'requiere_rediseno'
   if (disp <= DISP_REDISENO) return 'no_cumple_deformaciones'
   return 'requiere_rediseno'
@@ -56,6 +60,7 @@ function worstEstado(estados) {
 
 function CriterioIcon({ estado, cls = 'w-4 h-4' }) {
   if (estado === 'satisfactorio') return <CheckCircle2 className={`${cls} text-green-500 flex-shrink-0`} />
+  if (estado === 'margen_fuerza') return <Info className={`${cls} text-blue-500 flex-shrink-0`} />
   if (estado === 'no_cumple_deformaciones') return <AlertTriangle className={`${cls} text-amber-500 flex-shrink-0`} />
   return <XCircle className={`${cls} text-red-500 flex-shrink-0`} />
 }
@@ -79,6 +84,22 @@ function buildRefRows(pts, steps, loadKey, tipo) {
       const designForce = +(s[loadKey] ?? 0)
       if (designForce <= 0) return null
       const interpDisp = interpolateDisp(pts, designForce)
+
+      // Force not reached — evaluate displacement at the max measured point
+      if (interpDisp === null && pts.length > 0) {
+        const lastPt = pts.at(-1)
+        const dispAtMax = +lastPt.x.toFixed(3)
+        const forceAtMax = +lastPt.y.toFixed(3)
+        const margin = +(designForce - forceAtMax).toFixed(3)
+        const marginPct = +(margin / designForce * 100).toFixed(1)
+        // If displacement at max force is within the hard limit → margen de fuerza, no es fallo
+        if (dispAtMax <= DISP_REDISENO) {
+          return { paso: s.paso, designForce, interpDisp: dispAtMax, forceAtMax, margin, marginPct, notReached: true, estado: 'margen_fuerza', criterio: CRITERIO_INFO.margen_fuerza }
+        }
+        // Displacement too high even without reaching design force → real failure
+        return { paso: s.paso, designForce, interpDisp: dispAtMax, forceAtMax, margin, marginPct, notReached: true, estado: 'requiere_rediseno', criterio: CRITERIO_INFO.requiere_rediseno }
+      }
+
       const estado = estadoFromDisp(interpDisp, tipo)
       return { paso: s.paso, designForce, interpDisp, estado, criterio: CRITERIO_INFO[estado] }
     })
@@ -96,6 +117,7 @@ function RefCompareTable({ rows, color }) {
             <th className="px-3 py-1.5 text-center">Escalón</th>
             <th className="px-3 py-1.5 text-right">Carga diseño (kN)</th>
             <th className="px-3 py-1.5 text-right">Desp. en curva (mm)</th>
+            <th className="px-3 py-1.5 text-right">Margen fuerza</th>
             <th className="px-3 py-1.5 text-center">Evaluación</th>
           </tr>
         </thead>
@@ -109,11 +131,21 @@ function RefCompareTable({ rows, color }) {
                   {row.designForce} kN
                 </td>
                 <td className={`px-3 py-1 text-right font-mono font-semibold ${c.color}`}>
-                  {row.interpDisp !== null ? `${row.interpDisp} mm` : '— no alcanzada'}
+                  {row.interpDisp !== null ? `${row.interpDisp} mm` : '—'}
+                  {row.notReached && row.forceAtMax != null && (
+                    <span className="ml-1 text-brand-gray font-normal opacity-70">@ {row.forceAtMax} kN</span>
+                  )}
+                </td>
+                <td className="px-3 py-1 text-right font-mono text-brand-gray">
+                  {row.notReached
+                    ? <span className="text-blue-600">−{row.margin} kN ({row.marginPct}%)</span>
+                    : <span className="opacity-30">—</span>
+                  }
                 </td>
                 <td className="px-3 py-1 text-center">
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${c.bg} ${c.color}`}>
                     {row.estado === 'satisfactorio' && <CheckCircle2 className="w-3 h-3" />}
+                    {row.estado === 'margen_fuerza' && <Info className="w-3 h-3" />}
                     {row.estado === 'no_cumple_deformaciones' && <AlertTriangle className="w-3 h-3" />}
                     {row.estado === 'requiere_rediseno' && <XCircle className="w-3 h-3" />}
                     {c.short}
@@ -128,12 +160,40 @@ function RefCompareTable({ rows, color }) {
   )
 }
 
+// ─── Axis range helpers ───────────────────────────────────────────────────────
+function niceMax(val, pad = 0.18) {
+  if (!val || val <= 0) return 1
+  const padded = val * (1 + pad)
+  const mag = Math.pow(10, Math.floor(Math.log10(padded)))
+  for (const s of [1, 2, 2.5, 5, 10]) {
+    const c = Math.ceil(padded / (mag * s)) * mag * s
+    if (c >= padded) return +c.toPrecision(4)
+  }
+  return Math.ceil(padded)
+}
+
+// ─── Custom tooltip ───────────────────────────────────────────────────────────
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="bg-white border border-gray-200 shadow-md rounded-lg px-3 py-2 text-xs min-w-[120px]">
+      <p className="text-brand-gray mb-1 font-medium">δ = <span className="font-mono text-brand-dark">{label} mm</span></p>
+      {payload.map((p, i) => p.value != null && (
+        <p key={i} className="font-mono" style={{ color: p.color }}>
+          {p.name}: <span className="font-semibold">{p.value} kN</span>
+        </p>
+      ))}
+    </div>
+  )
+}
+
 // ─── Load-displacement chart ─────────────────────────────────────────────────
 function LoadDispChart({ ensayo, refRows }) {
   const meta = TIPO_META[ensayo.tipo] || TIPO_META.tension_vertical
+  const gradId = `grad-${ensayo.tipo}`
 
   const pts = (ensayo.puntos || []).map(p => ({
-    x: p.desplazamiento_mm ?? 0,
+    x: +(p.desplazamiento_mm ?? 0).toFixed(4),
     y: +(((p.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
   }))
   if (!pts.length) return (
@@ -145,76 +205,152 @@ function LoadDispChart({ ensayo, refRows }) {
     .map(r => ({ x: r.interpDisp, ref: r.designForce, paso: r.paso }))
 
   const maxDesign = refRows?.length ? Math.max(...refRows.map(r => r.designForce)) : 0
-  const maxX = Math.max(...pts.map(d => d.x), DISP_REDISENO * 1.1)
-  const maxY = Math.max(...pts.map(d => d.y), maxDesign, 1)
+  const dataMaxX = Math.max(...pts.map(d => d.x))
+
+  // Scale to data only — reference lines appear only if they fall within range
+  const calcXMax = () => niceMax(dataMaxX)
+  const calcYMax = () => niceMax(Math.max(...pts.map(d => d.y), maxDesign, 1))
+
+  const [showAxisControls, setShowAxisControls] = useState(false)
+  const [xMin, setXMin] = useState(0)
+  const [xMax, setXMax] = useState(calcXMax)
+  const [yMin, setYMin] = useState(0)
+  const [yMax, setYMax] = useState(calcYMax)
+
+  useEffect(() => {
+    setXMin(0); setXMax(niceMax(dataMaxX))
+    setYMin(0); setYMax(niceMax(Math.max(...pts.map(d => d.y), maxDesign, 1)))
+  }, [ensayo.tipo, pts.length]) // eslint-disable-line
+
+  const safeNum = (v, fb) => { const n = parseFloat(v); return isFinite(n) ? n : fb }
 
   const CustomDot = ({ cx, cy, payload }) => {
     if (!payload || payload.ref == null) return null
     return (
       <g>
-        <circle cx={cx} cy={cy} r={6} fill="#fff" stroke={meta.color} strokeWidth={2.5} />
-        <circle cx={cx} cy={cy} r={2} fill={meta.color} />
+        <circle cx={cx} cy={cy} r={4} fill="white" stroke={meta.color} strokeWidth={1.5} />
+        <circle cx={cx} cy={cy} r={1.5} fill={meta.color} />
       </g>
     )
   }
 
   return (
-    <div id={`chart-${ensayo.punto_id}-${ensayo.tipo}`} style={{ width: '100%', height: '230px' }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart margin={{ top: 10, right: 30, left: 0, bottom: 24 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis
-            dataKey="x"
-            type="number"
-            domain={[0, Math.ceil(maxX * 1.1)]}
-            label={{ value: 'Desplazamiento (mm)', position: 'insideBottom', offset: -12, fontSize: 10 }}
-            tick={{ fontSize: 10 }}
-            allowDuplicatedCategory={false}
-          />
-          <YAxis
-            domain={[0, Math.ceil(maxY * 1.15)]}
-            label={{ value: 'Fuerza (kN)', angle: -90, position: 'insideLeft', fontSize: 10, dy: 40 }}
-            tick={{ fontSize: 10 }}
-          />
-          <Tooltip
-            formatter={(v, name) => [`${v} kN`, name]}
-            labelFormatter={(l) => `δ = ${l} mm`}
-          />
-          <Legend verticalAlign="top" height={26} iconSize={10} wrapperStyle={{ fontSize: 10 }} />
+    <div id={`chart-${ensayo.punto_id}-${ensayo.tipo}`}>
+      {/* Controls bar */}
+      <div className="flex justify-end mb-1.5">
+        <button
+          onClick={() => setShowAxisControls(v => !v)}
+          title="Ajustar escala de ejes"
+          className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded border transition-colors
+            ${showAxisControls ? 'border-brand text-brand bg-brand/5' : 'border-gray-200 text-brand-gray hover:border-brand hover:text-brand'}`}
+        >
+          <Settings2 className="w-3 h-3" />
+          Ejes
+        </button>
+      </div>
 
-          {/* Displacement limit lines (always visible as visual reference) */}
-          <ReferenceLine x={DISP_SATISFACTORIO} stroke="#F59E0B" strokeDasharray="5 3" strokeWidth={1.5}
-            label={{ value: `${DISP_SATISFACTORIO} mm`, fill: '#92400E', fontSize: 9, position: 'insideTopLeft' }} />
-          <ReferenceLine x={DISP_REDISENO} stroke="#EF4444" strokeDasharray="5 3" strokeWidth={1.5}
-            label={{ value: `${DISP_REDISENO} mm`, fill: '#991B1B', fontSize: 9, position: 'insideTopLeft' }} />
+      {showAxisControls && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-2 mb-3 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded text-xs">
+          {[
+            { label: 'X mín (mm)', val: xMin, set: setXMin, step: 0.5, fb: 0 },
+            { label: 'X máx (mm)', val: xMax, set: setXMax, step: 0.5, fb: calcXMax() },
+            { label: 'Y mín (kN)', val: yMin, set: setYMin, step: 0.1, fb: 0 },
+            { label: 'Y máx (kN)', val: yMax, set: setYMax, step: 0.1, fb: calcYMax() },
+          ].map(({ label, val, set, step, fb }) => (
+            <div key={label} className="flex flex-col gap-0.5">
+              <span className="text-brand-gray/80">{label}</span>
+              <input type="number" value={val} step={step}
+                onChange={e => set(safeNum(e.target.value, fb))}
+                className="border border-gray-200 rounded px-2 py-0.5 font-mono text-right focus:outline-none focus:border-brand bg-white" />
+            </div>
+          ))}
+          <div className="col-span-2 sm:col-span-4 flex justify-end">
+            <button
+              onClick={() => { setXMin(0); setXMax(calcXMax()); setYMin(0); setYMax(calcYMax()) }}
+              className="text-xs text-brand-gray hover:text-brand underline"
+            >
+              Restablecer automático
+            </button>
+          </div>
+        </div>
+      )}
 
-          {/* Measured curve */}
-          <Line
-            data={pts}
-            dataKey="y"
-            name="Curva medida"
-            stroke={meta.color}
-            strokeWidth={2}
-            dot={{ r: 3, fill: meta.color }}
-            activeDot={{ r: 5 }}
-            connectNulls
-          />
+      <div style={{ width: '100%', height: '260px' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart margin={{ top: 10, right: 24, left: 10, bottom: 26 }}>
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={meta.color} stopOpacity={0.18} />
+                <stop offset="100%" stopColor={meta.color} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
 
-          {/* Reference load points projected onto the curve */}
-          {refPoints.length > 0 && (
-            <Line
-              data={refPoints}
-              dataKey="ref"
-              name="Escalones diseño"
-              stroke={meta.color}
-              strokeWidth={0}
-              dot={<CustomDot />}
-              activeDot={{ r: 7, strokeWidth: 2 }}
-              legendType="circle"
+            <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" vertical={true} />
+
+            <XAxis
+              dataKey="x" type="number"
+              domain={[xMin, xMax]}
+              tickCount={7}
+              tickFormatter={v => +v.toFixed(2)}
+              label={{ value: 'Desplazamiento (mm)', position: 'insideBottom', offset: -14, fontSize: 10, fill: '#6b7280' }}
+              tick={{ fontSize: 10, fill: '#6b7280' }}
+              axisLine={{ stroke: '#d1d5db' }}
+              tickLine={{ stroke: '#d1d5db' }}
             />
-          )}
-        </LineChart>
-      </ResponsiveContainer>
+            <YAxis
+              domain={[yMin, yMax]}
+              tickCount={7}
+              tickFormatter={v => +v.toFixed(2)}
+              label={{ value: 'Fuerza (kN)', angle: -90, position: 'insideLeft', fontSize: 10, fill: '#6b7280', dy: 45 }}
+              tick={{ fontSize: 10, fill: '#6b7280' }}
+              axisLine={{ stroke: '#d1d5db' }}
+              tickLine={{ stroke: '#d1d5db' }}
+              width={52}
+            />
+
+            <Tooltip content={<ChartTooltip />} />
+            <Legend verticalAlign="top" height={24} iconSize={10} wrapperStyle={{ fontSize: 10, color: '#6b7280' }} />
+
+            {/* Limit lines — only rendered if within visible X range */}
+            {DISP_SATISFACTORIO <= xMax && (
+              <ReferenceLine x={DISP_SATISFACTORIO} stroke="#F59E0B" strokeDasharray="6 3" strokeWidth={1.5}
+                label={{ value: `${DISP_SATISFACTORIO} mm`, fill: '#92400E', fontSize: 9, position: 'insideTopRight' }} />
+            )}
+            {DISP_REDISENO <= xMax && (
+              <ReferenceLine x={DISP_REDISENO} stroke="#EF4444" strokeDasharray="6 3" strokeWidth={1.5}
+                label={{ value: `${DISP_REDISENO} mm`, fill: '#991B1B', fontSize: 9, position: 'insideTopRight' }} />
+            )}
+
+            {/* Area fill under curve */}
+            <Area
+              data={pts}
+              dataKey="y"
+              name="Curva medida"
+              stroke={meta.color}
+              strokeWidth={2.5}
+              fill={`url(#${gradId})`}
+              dot={{ r: 2.5, fill: meta.color, stroke: 'white', strokeWidth: 1 }}
+              activeDot={{ r: 4, stroke: 'white', strokeWidth: 1.5 }}
+              connectNulls
+              type="monotone"
+            />
+
+            {/* Design load points on curve */}
+            {refPoints.length > 0 && (
+              <Line
+                data={refPoints}
+                dataKey="ref"
+                name="Escalones diseño"
+                stroke={meta.color}
+                strokeWidth={0}
+                dot={<CustomDot />}
+                activeDot={{ r: 5, strokeWidth: 1.5 }}
+                legendType="circle"
+              />
+            )}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   )
 }
@@ -254,11 +390,13 @@ function EnsayoCard({ ensayo, selectedLoadSet }) {
   const [showRawTable, setShowRawTable] = useState(false)
   const meta = TIPO_META[ensayo.tipo] || TIPO_META.tension_vertical
 
-  // Build measured points in kN for interpolation
-  const measuredPts = (ensayo.puntos || []).map(p => ({
-    x: p.desplazamiento_mm ?? 0,
-    y: +(((p.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
-  }))
+  // Build measured points in kN for interpolation (sorted ascending by force)
+  const measuredPts = (ensayo.puntos || [])
+    .map(p => ({
+      x: p.desplazamiento_mm ?? 0,
+      y: +(((p.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
+    }))
+    .sort((a, b) => a.y - b.y)
 
   // Comparison rows and worst estado — ONLY when a load set is selected
   const refRows = selectedLoadSet ? buildRefRows(measuredPts, selectedLoadSet.steps, meta.loadKey, ensayo.tipo) : []
@@ -267,6 +405,28 @@ function EnsayoCard({ ensayo, selectedLoadSet }) {
   const criterio = estado ? CRITERIO_INFO[estado] : null
 
   const maxDesign = hasRef ? refRows.at(-1).designForce : null
+
+  const failReason = (() => {
+    if (!hasRef || !estado || estado === 'satisfactorio') return null
+    if (estado === 'margen_fuerza') {
+      const row = refRows.find(r => r.estado === 'margen_fuerza')
+      if (!row) return null
+      return `Carga no alcanzada en escalón ${row.paso} — medido ${row.forceAtMax} kN de ${row.designForce} kN requeridos (−${row.margin} kN, −${row.marginPct}%)`
+    }
+    if (estado === 'no_cumple_deformaciones') {
+      const row = refRows.find(r => r.estado === 'no_cumple_deformaciones')
+      if (!row) return null
+      return `Desplazamiento de ${row.interpDisp} mm en escalón ${row.paso} (${row.designForce} kN) — entre ${DISP_SATISFACTORIO} y ${DISP_REDISENO} mm`
+    }
+    // requiere_rediseno — puede ser por desplazamiento excedido o carga no alcanzada con desp. alto
+    const row = refRows.find(r => r.estado === 'requiere_rediseno')
+    if (!row) return null
+    if (row.notReached)
+      return `Desplazamiento de ${row.interpDisp} mm al máximo medido (${row.forceAtMax} kN) supera el límite de ${DISP_REDISENO} mm — carga de diseño ${row.designForce} kN no alcanzada`
+    if (ensayo.tipo === 'carga_lateral')
+      return `Desplazamiento lateral de ${row.interpDisp} mm en escalón ${row.paso} (${row.designForce} kN) supera el límite de ${DISP_SATISFACTORIO} mm`
+    return `Desplazamiento de ${row.interpDisp} mm en escalón ${row.paso} (${row.designForce} kN) supera el límite de ${DISP_REDISENO} mm`
+  })()
 
   return (
     <div className={`rounded border ${meta.border} ${meta.bg} overflow-hidden`}>
@@ -307,6 +467,7 @@ function EnsayoCard({ ensayo, selectedLoadSet }) {
       {hasRef && criterio && (
         <div className={`mx-4 mb-2 px-3 py-1.5 rounded text-xs font-medium ${criterio.bg} ${criterio.color}`}>
           {criterio.label}
+          {failReason && <span className="ml-2 opacity-75 font-normal">— {failReason}</span>}
         </div>
       )}
 
@@ -337,20 +498,26 @@ function EnsayoCard({ ensayo, selectedLoadSet }) {
 }
 
 // ─── Single point card ────────────────────────────────────────────────────────
-function PuntoCard({ punto, selectedLoadSet }) {
+function PuntoCard({ punto, selectedLoadSet, forceOpen = false }) {
   const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    if (forceOpen) setExpanded(true)
+  }, [forceOpen])
   const ensayos = punto.ensayos || []
 
   // Compute per-ensayo estado from refRows — ONLY when a load set is selected
   const ensayoEstados = selectedLoadSet
     ? ensayos.map(e => {
       const meta = TIPO_META[e.tipo] || TIPO_META.tension_vertical
-      const measPts = (e.puntos || []).map(p => ({
-        x: p.desplazamiento_mm ?? 0,
-        y: +(((p.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
-      }))
+      const measPts = (e.puntos || [])
+        .map(p => ({
+          x: p.desplazamiento_mm ?? 0,
+          y: +(((p.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
+        }))
+        .sort((a, b) => a.y - b.y)
       const rows = buildRefRows(measPts, selectedLoadSet.steps, meta.loadKey, e.tipo)
-      return rows.length ? worstEstado(rows.map(r => r.estado)) : 'satisfactorio'
+      return rows.length ? worstEstado(rows.map(r => r.estado)) : 'no_evaluado'
     })
     : []
 
@@ -361,11 +528,13 @@ function PuntoCard({ punto, selectedLoadSet }) {
 
   const borderCls = !hasRef ? 'border-gray-200' :
     puntoEstado === 'satisfactorio' ? 'border-green-300' :
-      puntoEstado === 'no_cumple_deformaciones' ? 'border-amber-300' : 'border-red-300'
+      puntoEstado === 'margen_fuerza' ? 'border-amber-300' :
+        puntoEstado === 'no_cumple_deformaciones' ? 'border-amber-300' : 'border-red-300'
 
   const headBg = !hasRef ? 'bg-brand-light' :
     puntoEstado === 'satisfactorio' ? 'bg-green-50' :
-      puntoEstado === 'no_cumple_deformaciones' ? 'bg-amber-50' : 'bg-red-50'
+      puntoEstado === 'margen_fuerza' ? 'bg-amber-50' :
+        puntoEstado === 'no_cumple_deformaciones' ? 'bg-amber-50' : 'bg-red-50'
 
   // TrafficLight estado: show computed if hasRef, else 'no_evaluado'
   const tlEstado = hasRef && puntoEstado ? puntoEstado : 'no_evaluado'
@@ -471,6 +640,7 @@ export default function AnalysisReport({ analysis }) {
   const { proyecto, puntos = [] } = analysis
   const [loadSets, setLoadSets] = useState([])
   const [selectedId, setSelectedId] = useState('')
+  const [activePuntoId, setActivePuntoId] = useState(null)
 
   useEffect(() => {
     fetch('/cargas_defecto.json')
@@ -488,12 +658,14 @@ export default function AnalysisReport({ analysis }) {
     ? Object.fromEntries(puntos.map(p => {
       const ensayoEstados = (p.ensayos || []).map(e => {
         const meta = TIPO_META[e.tipo] || TIPO_META.tension_vertical
-        const measPts = (e.puntos || []).map(pt => ({
-          x: pt.desplazamiento_mm ?? 0,
-          y: +(((pt.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
-        }))
+        const measPts = (e.puntos || [])
+          .map(pt => ({
+            x: pt.desplazamiento_mm ?? 0,
+            y: +(((pt.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
+          }))
+          .sort((a, b) => a.y - b.y)
         const rows = buildRefRows(measPts, selectedLoadSet.steps, meta.loadKey, e.tipo)
-        return rows.length ? worstEstado(rows.map(r => r.estado)) : 'satisfactorio'
+        return rows.length ? worstEstado(rows.map(r => r.estado)) : 'no_evaluado'
       })
       return [p.punto_id, ensayoEstados.length ? worstEstado(ensayoEstados) : 'satisfactorio']
     }))
@@ -556,7 +728,7 @@ export default function AnalysisReport({ analysis }) {
           </div>
           <div className="text-xs text-brand-gray mt-1">Requiere rediseño</div>
           <div className={`text-xs font-medium mt-0.5 ${hasRef ? 'text-red-600' : 'text-brand-gray/30'}`}>
-            &gt; {DISP_REDISENO} mm
+            &gt; {DISP_REDISENO} mm o carga no alcanzada
           </div>
         </div>
       </div>
@@ -571,6 +743,11 @@ export default function AnalysisReport({ analysis }) {
             <span className="text-brand-gray">— δ ≤ {DISP_SATISFACTORIO} mm en todos los escalones</span>
           </span>
           <span className="flex items-center gap-1.5">
+            <Info className="w-4 h-4 text-blue-500" />
+            <span className="font-semibold text-blue-700">Margen de fuerza</span>
+            <span className="text-brand-gray">— carga de diseño no alcanzada, pero δ ≤ {DISP_REDISENO} mm</span>
+          </span>
+          <span className="flex items-center gap-1.5">
             <AlertTriangle className="w-4 h-4 text-amber-500" />
             <span className="font-semibold text-amber-700">No cumple deformaciones</span>
             <span className="text-brand-gray">— algún escalón entre {DISP_SATISFACTORIO} y {DISP_REDISENO} mm</span>
@@ -578,7 +755,7 @@ export default function AnalysisReport({ analysis }) {
           <span className="flex items-center gap-1.5">
             <XCircle className="w-4 h-4 text-red-500" />
             <span className="font-semibold text-red-700">Requiere rediseño</span>
-            <span className="text-brand-gray">— algún escalón &gt; {DISP_REDISENO} mm o carga no alcanzada</span>
+            <span className="text-brand-gray">— δ &gt; {DISP_REDISENO} mm</span>
           </span>
         </div>
       </div>
@@ -592,6 +769,33 @@ export default function AnalysisReport({ analysis }) {
               ? 'Los escalones de carga se proyectan sobre cada curva (círculos blancos). La evaluación se basa en el desplazamiento interpolado para cada escalón.'
               : 'Selecciona un juego de cargas para activar la evaluación de cumplimiento.'}
           </p>
+          {hasRef && selectedLoadSet && (
+            <div className="mt-1 overflow-x-auto rounded border border-gray-200 text-xs">
+              <p className="text-xs font-semibold text-brand-gray px-3 pt-2 pb-1 uppercase tracking-wide">
+                Cargas de diseño — {selectedLoadSet.label}
+              </p>
+              <table className="min-w-full">
+                <thead className="bg-brand-light text-brand-gray uppercase text-xs">
+                  <tr>
+                    <th className="px-3 py-1.5 text-center">Escalón</th>
+                    <th className="px-3 py-1.5 text-right">Tensión (kN)</th>
+                    <th className="px-3 py-1.5 text-right">Compresión (kN)</th>
+                    <th className="px-3 py-1.5 text-right">Lateral (kN)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {selectedLoadSet.steps.map(s => (
+                    <tr key={s.paso} className="hover:bg-brand-light">
+                      <td className="px-3 py-1 text-center font-mono text-brand-gray">{s.paso}</td>
+                      <td className="px-3 py-1 text-right font-mono">{s.tension_kN}</td>
+                      <td className="px-3 py-1 text-right font-mono">{s.compresion_kN}</td>
+                      <td className="px-3 py-1 text-right font-mono">{s.lateral_kN}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -614,8 +818,15 @@ export default function AnalysisReport({ analysis }) {
               {puntos.map(p => {
                 const byTipo = Object.fromEntries((p.ensayos || []).map(e => [e.tipo, e]))
                 return (
-                  <tr key={p.punto_id} className="hover:bg-brand-light">
-                    <td className="px-3 py-2 font-mono font-semibold text-brand-dark">{p.punto_id}</td>
+                  <tr
+                    key={p.punto_id}
+                    className="hover:bg-brand-light cursor-pointer"
+                    onClick={() => {
+                      setActivePuntoId(p.punto_id)
+                      setTimeout(() => document.getElementById(`punto-${p.punto_id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+                    }}
+                  >
+                    <td className="px-3 py-2 font-mono font-semibold text-brand-dark underline decoration-dotted underline-offset-2">{p.punto_id}</td>
                     <td className="px-3 py-2">
                       <TrafficLight estado={puntoEstadoMap[p.punto_id] ?? 'no_evaluado'} size="sm" />
                     </td>
@@ -648,7 +859,9 @@ export default function AnalysisReport({ analysis }) {
       <div className="space-y-4">
         <h3 className="font-semibold text-brand-dark">Detalle por Punto</h3>
         {puntos.map(p => (
-          <PuntoCard key={p.punto_id} punto={p} selectedLoadSet={selectedLoadSet} />
+          <div key={p.punto_id} id={`punto-${p.punto_id}`} style={{ scrollMarginTop: '1rem' }}>
+            <PuntoCard punto={p} selectedLoadSet={selectedLoadSet} forceOpen={activePuntoId === p.punto_id} />
+          </div>
         ))}
       </div>
 

@@ -228,11 +228,6 @@ export default function AnalyzePage() {
           <div>
             <div className="font-semibold mb-0.5">Error en el análisis</div>
             <div className="whitespace-pre-wrap">{error}</div>
-            {error.includes('ANTHROPIC_API_KEY') && (
-              <div className="mt-2 text-xs bg-red-100 rounded p-2 font-mono">
-                Agrega tu clave en: backend/.env → ANTHROPIC_API_KEY=sk-ant-...
-              </div>
-            )}
           </div>
         </div>
       )}
