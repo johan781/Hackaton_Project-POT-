@@ -1,0 +1,22 @@
+name: Stop containers
+
+on:
+  workflow_dispatch:
+
+jobs:
+  stop:
+    name: Stop via SSH
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Detener contenedores en EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key:      ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout:  2m
+          script: |
+            cd ~/apps/Hackaton_Project-POT-
+            docker-compose down
+            echo "✅ Contenedores detenidos"
