@@ -1,0 +1,22 @@
+name: Start containers
+
+on:
+  workflow_dispatch:
+
+jobs:
+  start:
+    name: Start via SSH
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Levantar contenedores en EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key:      ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout:  2m
+          script: |
+            cd ~/apps/Hackaton_Project-POT-
+            docker-compose up -d
+            echo "✅ Contenedores levantados"
