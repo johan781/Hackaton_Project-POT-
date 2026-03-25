@@ -26,8 +26,8 @@ jobs:
             git pull origin main
 
             echo "── Reconstruyendo y levantando contenedores ──"
-            docker compose pull --quiet 2>/dev/null || true
-            docker compose up -d --build --remove-orphans
+            docker-compose pull --quiet 2>/dev/null || true
+            docker-compose up -d --build --remove-orphans
 
             echo "── Esperando que el backend arranque ──"
             sleep 10
