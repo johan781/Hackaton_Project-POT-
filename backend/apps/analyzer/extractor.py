@@ -41,9 +41,24 @@ TIPO_LABELS = {
 }
 
 TIPO_KEYWORDS: dict[str, list[str]] = {
-    "compresion_vertical": ["compresión", "compresion", "compression", "compres"],
-    "tension_vertical":    ["tensión", "tension", "tracción", "traccion", "tract"],
-    "carga_lateral":       ["lateral", "horizontal", "cortante", "shear"],
+    "compresion_vertical": [
+        "compresión", "compresion", "compression", "compres",
+        "empuje", "push", "axial compres", "vertical compres",
+        "carga axial", "fuerza axial", "ensayo de compresion",
+    ],
+    "tension_vertical": [
+        "tensión", "tension", "tracción", "traccion", "tract",
+        "arranque", "pull", "pull-out", "pullout", "pull out",
+        "arrancamiento", "extracción", "extraccion",
+        "vertical tension", "axial tension", "ensayo de tension",
+        "ensayo de traccion", "fuerza de arranque",
+    ],
+    "carga_lateral": [
+        "lateral", "horizontal", "cortante", "shear",
+        "carga lateral", "fuerza lateral", "empuje lateral",
+        "prueba lateral", "ensayo lateral", "ensayo horizontal",
+        "deflexion", "deflexión", "desplazamiento lateral",
+    ],
 }
 TIPO_SEQUENCE = ["tension_vertical", "compresion_vertical", "carga_lateral"]
 
@@ -1047,6 +1062,162 @@ def _parse_format_e(pages_text: list[str], file_bytes: bytes) -> dict | None:
     return {"proyecto": proyecto, "puntos": puntos, "_pdf_debug": debug_pages}
 
 
+# ─── Parser genérico (fallback para formatos desconocidos) ───────────────────
+
+# Sinónimos amplios para detectar columnas de fuerza y desplazamiento
+_FORCE_HEADERS = [
+    "fuerza", "carga", "load", "force", "kg", "kgf", "kn", "ton",
+    "aplicad", "real", "nominal", "prueba", "p (", "f (", "q (",
+]
+_DISP_HEADERS = [
+    "desplaz", "deform", "deflec", "movim", "δ", "delta",
+    "mm", "disp", "displ", "settlement", "desp",
+]
+
+# Rango típico de valores en mm para desplazamiento POT
+_DISP_MIN, _DISP_MAX = 0.0, 200.0
+# Rango mínimo de fuerza en kgf (filtra ruido)
+_FORCE_MIN_KGF = 5.0
+
+
+def _col_looks_like_displacement(values: list[float]) -> bool:
+    """True si los valores parecen desplazamientos en mm (0–200, progresivos)."""
+    if not values:
+        return False
+    return all(_DISP_MIN <= v <= _DISP_MAX for v in values)
+
+
+def _col_looks_like_force(values: list[float]) -> bool:
+    """True si los valores parecen fuerzas (crecientes, > umbral mínimo)."""
+    if not values:
+        return False
+    return max(values) >= _FORCE_MIN_KGF and len(values) >= 2
+
+
+def _infer_unit_kgf(header: str, values: list[float]) -> float:
+    """
+    Devuelve el factor para convertir a kgf.
+    Si el header indica kN o los valores son pequeños (< 200), asume kN → kgf.
+    Si indica kg/kgf o valores grandes, asume ya está en kgf.
+    """
+    h = header.lower()
+    if "kn" in h and "kgf" not in h and "kg" not in h:
+        return 1.0 / KGF_TO_KN  # kN → kgf
+    # Heurística por magnitud: si max < 200 y no hay "kg" explícito → probablemente kN
+    if max(values, default=0) < 200 and "kg" not in h:
+        return 1.0 / KGF_TO_KN
+    return 1.0
+
+
+def _detect_tipo_from_context(context: str) -> str:
+    """Detecta tipo de ensayo desde cualquier texto cercano a la tabla."""
+    return _detect_tipo(context) or "tension_vertical"
+
+
+def _parse_table_generic(table: list[list], context_text: str = "") -> tuple[str | None, list[dict]]:
+    """
+    Parser genérico de tabla POT.
+    Detecta las columnas de fuerza y desplazamiento por nombre Y por valores,
+    sin depender de encabezados exactos.
+    Devuelve (tipo, lista_de_puntos).
+    """
+    if not table or len(table) < 3:
+        return None, []
+
+    # Buscar fila de encabezados: primera fila con texto no vacío y no solo números
+    header_idx = None
+    for i, row in enumerate(table[:6]):
+        cells = [_clean(c) for c in row]
+        text_cells = [c for c in cells if c and not re.match(r"^[\d\.\,\-\+\s]+$", c)]
+        if len(text_cells) >= 2:
+            header_idx = i
+            break
+
+    if header_idx is None:
+        return None, []
+
+    headers = [_clean(c).lower() for c in table[header_idx]]
+    data_rows = table[header_idx + 1:]
+
+    # Extraer valores numéricos por columna
+    n_cols = len(headers)
+    col_values: list[list[float]] = [[] for _ in range(n_cols)]
+    for row in data_rows:
+        for j in range(min(len(row), n_cols)):
+            v = _num(row[j])
+            if v is not None and v >= 0:
+                col_values[j].append(v)
+
+    # Descartar columnas sin datos numéricos suficientes
+    valid_cols = [j for j in range(n_cols) if len(col_values[j]) >= 2]
+    if len(valid_cols) < 2:
+        return None, []
+
+    # Clasificar columnas: primero por header, luego por valores
+    col_disp: int | None = None
+    col_force: int | None = None
+    col_force_header = ""
+
+    # Prioridad 1: nombre del header
+    for j in valid_cols:
+        h = headers[j]
+        if col_disp is None and any(k in h for k in _DISP_HEADERS):
+            col_disp = j
+        elif col_force is None and any(k in h for k in _FORCE_HEADERS):
+            col_force = j
+            col_force_header = h
+
+    # Prioridad 2: inferencia por rangos de valores si no se identificó por header
+    if col_disp is None or col_force is None:
+        for j in valid_cols:
+            if j == col_disp or j == col_force:
+                continue
+            vals = col_values[j]
+            if col_disp is None and _col_looks_like_displacement(vals):
+                col_disp = j
+            elif col_force is None and _col_looks_like_force(vals):
+                col_force = j
+                col_force_header = headers[j]
+
+    if col_disp is None or col_force is None:
+        return None, []
+
+    # Factor de conversión a kgf
+    to_kg = _infer_unit_kgf(col_force_header, col_values[col_force])
+
+    # Construir pares (desplazamiento_mm, fuerza_kg)
+    pairs = []
+    for row in data_rows:
+        if len(row) <= max(col_disp, col_force):
+            continue
+        d = _num(row[col_disp])
+        f = _num(row[col_force])
+        if d is None or f is None or f <= 0:
+            continue
+        pairs.append((d, f * to_kg))
+
+    if not pairs:
+        return None, []
+
+    # Deduplicar por nivel de fuerza (igual que en el parser A)
+    pairs_sorted = sorted(pairs, key=lambda p: p[1])
+    deduped: list[tuple] = []
+    for disp, fuerza in pairs_sorted:
+        if deduped and abs(fuerza - deduped[-1][1]) / max(deduped[-1][1], 1) < 0.03:
+            if disp > deduped[-1][0]:
+                deduped[-1] = (disp, fuerza)
+        else:
+            deduped.append((disp, fuerza))
+
+    pts = [{"desplazamiento_mm": d, "fuerza_kg": f} for d, f in deduped]
+
+    # Detectar tipo del contexto (título de tabla + texto de la página)
+    title_text = " ".join(_clean(c) for c in table[0]) if table else ""
+    tipo = _detect_tipo_from_context(title_text + " " + context_text)
+
+    return tipo, pts
+
+
 # ─── Parser PDF principal ─────────────────────────────────────────────────────
 
 def parse_pdf(file_bytes: bytes) -> dict:
@@ -1222,6 +1393,73 @@ def parse_pdf(file_bytes: bytes) -> dict:
             })
 
     puntos = list(puntos_by_id.values())
+
+    # ── Fallback genérico: si ningún formato A/B extrajo puntos ───────────────
+    if not puntos:
+        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf_gen:
+            for page_num, page in enumerate(pdf_gen.pages):
+                page_text = pages_text[page_num]
+                ensayos_gen: list[dict] = []
+
+                # Intentar con todas las tablas de la página
+                for tbl in (page.extract_tables() or []):
+                    tbl_str = [[_clean(c) for c in row] for row in tbl]
+                    tipo, pts = _parse_table_generic(tbl_str, page_text)
+                    if tipo and pts:
+                        e = {
+                            "tipo": tipo,
+                            "nombre": TIPO_LABELS.get(tipo, tipo),
+                            "carga_maxima_kgf":         max(p["fuerza_kg"]         for p in pts),
+                            "desplazamiento_maximo_mm": max(p["desplazamiento_mm"] for p in pts),
+                            "puntos": pts,
+                        }
+                        ensayos_gen.append(e)
+
+                # También intentar con reconstrucción por palabras
+                if not ensayos_gen:
+                    words = page.extract_words(x_tolerance=3, y_tolerance=3, keep_blank_chars=False)
+                    if words:
+                        rows    = _words_to_rows(words, row_gap=8)
+                        centers = _cluster_x(rows, merge_dist=20)
+                        table   = _rows_to_table(rows, centers)
+                        tipo, pts = _parse_table_generic(table, page_text)
+                        if tipo and pts:
+                            ensayos_gen.append({
+                                "tipo": tipo,
+                                "nombre": TIPO_LABELS.get(tipo, tipo),
+                                "carga_maxima_kgf":         max(p["fuerza_kg"]         for p in pts),
+                                "desplazamiento_maximo_mm": max(p["desplazamiento_mm"] for p in pts),
+                                "puntos": pts,
+                            })
+
+                if not ensayos_gen:
+                    continue
+
+                text_meta = _extract_metadata_text(page_text)
+                punto_id  = text_meta.get("punto_id") or f"P-{page_num + 1:02d}"
+
+                if punto_id not in puntos_by_id:
+                    p = _empty_punto(punto_id)
+                    p["profundidad_m"] = text_meta.get("profundidad_m")
+                    p["coordenadas"]   = text_meta.get("coordenadas")
+                    p["fecha_ensayo"]  = text_meta.get("fecha_ensayo")
+                    puntos_by_id[punto_id] = p
+
+                existing_tipos = {e["tipo"] for e in puntos_by_id[punto_id]["ensayos"]}
+                for e in ensayos_gen:
+                    if e["tipo"] not in existing_tipos:
+                        puntos_by_id[punto_id]["ensayos"].append(e)
+                        existing_tipos.add(e["tipo"])
+
+                debug_pages.append({
+                    "page": page_num + 1,
+                    "punto_id": punto_id,
+                    "ensayos": [e["tipo"] for e in ensayos_gen],
+                    "formato": "generic",
+                })
+
+        puntos = list(puntos_by_id.values())
+
     return {
         "proyecto": proyecto,
         "puntos":   puntos,
