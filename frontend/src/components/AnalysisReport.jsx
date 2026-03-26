@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ReferenceLine, ResponsiveContainer, Legend,
+  ReferenceLine, ReferenceDot, ResponsiveContainer, Legend,
 } from 'recharts'
 import TrafficLight from './TrafficLight'
 import { ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertTriangle, Settings2, Minus, Info } from 'lucide-react'
@@ -66,6 +66,18 @@ function CriterioIcon({ estado, cls = 'w-4 h-4' }) {
 }
 
 // ─── Interpolation ────────────────────────────────────────────────────────────
+function interpolateY(pts, targetX) {
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].x >= targetX) {
+      const { x: x0, y: y0 } = pts[i - 1]
+      const { x: x1, y: y1 } = pts[i]
+      if (x1 === x0) return +y0.toFixed(3)
+      return +(y0 + (targetX - x0) * (y1 - y0) / (x1 - x0)).toFixed(3)
+    }
+  }
+  return null
+}
+
 function interpolateDisp(pts, targetY) {
   for (let i = 1; i < pts.length; i++) {
     if (pts[i].y >= targetY) {
@@ -224,6 +236,43 @@ function LoadDispChart({ ensayo, refRows }) {
 
   const safeNum = (v, fb) => { const n = parseFloat(v); return isFinite(n) ? n : fb }
 
+  const [offset15, setOffset15] = useState({ dx: 0, dy: 0 })
+  const [offset254, setOffset254] = useState({ dx: 0, dy: 0 })
+
+  const startDrag = (currentOffset, setOffset) => (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const startX = e.clientX
+    const startY = e.clientY
+    const { dx: baseDx, dy: baseDy } = currentOffset
+    const onMove = (me) => setOffset({ dx: baseDx + me.clientX - startX, dy: baseDy + me.clientY - startY })
+    const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  const DotWithLabel = (color, disp, force, offset, onDragStart) => ({ cx, cy }) => {
+    if (cx == null || cy == null) return null
+    const line1 = `δ = ${disp} mm`
+    const line2 = `F = ${force} kN`
+    const w = Math.max(line1.length, line2.length) * 6.8 + 12
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={5} fill={color} stroke="white" strokeWidth={2} />
+        <g style={{ cursor: 'grab' }} onMouseDown={onDragStart}>
+          <rect x={cx - w - 6 + offset.dx} y={cy - 38 + offset.dy} width={w} height={30} rx={3}
+            fill="white" stroke={color} strokeWidth={1} opacity={0.95} />
+          <text x={cx - 10 + offset.dx} y={cy - 24 + offset.dy} textAnchor="end" fontSize={11} fontWeight="600" fill={color}>
+            {line1}
+          </text>
+          <text x={cx - 10 + offset.dx} y={cy - 11 + offset.dy} textAnchor="end" fontSize={11} fontWeight="600" fill={color}>
+            {line2}
+          </text>
+        </g>
+      </g>
+    )
+  }
+
   const CustomDot = ({ cx, cy, payload }) => {
     if (!payload || payload.ref == null) return null
     return (
@@ -319,6 +368,16 @@ function LoadDispChart({ ensayo, refRows }) {
             {DISP_REDISENO <= xMax && (
               <ReferenceLine x={DISP_REDISENO} stroke="#EF4444" strokeDasharray="6 3" strokeWidth={1.5}
                 label={{ value: `${DISP_REDISENO} mm`, fill: '#991B1B', fontSize: 9, position: 'insideTopRight' }} />
+            )}
+
+            {/* Intersection dots at threshold x-values */}
+            {DISP_SATISFACTORIO >= xMin && DISP_SATISFACTORIO <= xMax && interpolateY(pts, DISP_SATISFACTORIO) != null && (
+              <ReferenceDot x={DISP_SATISFACTORIO} y={interpolateY(pts, DISP_SATISFACTORIO)} r={0}
+                shape={DotWithLabel('#F59E0B', DISP_SATISFACTORIO, interpolateY(pts, DISP_SATISFACTORIO), offset15, startDrag(offset15, setOffset15))} />
+            )}
+            {DISP_REDISENO >= xMin && DISP_REDISENO <= xMax && interpolateY(pts, DISP_REDISENO) != null && (
+              <ReferenceDot x={DISP_REDISENO} y={interpolateY(pts, DISP_REDISENO)} r={0}
+                shape={DotWithLabel('#EF4444', DISP_REDISENO, interpolateY(pts, DISP_REDISENO), offset254, startDrag(offset254, setOffset254))} />
             )}
 
             {/* Area fill under curve */}

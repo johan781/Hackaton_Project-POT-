@@ -10,10 +10,8 @@ export default function App() {
       <div className="min-h-screen bg-brand-light">
         <nav className="bg-white border-b border-gray-200 px-6 py-0 flex items-center gap-6">
           <div className="flex items-center gap-2 py-3 mr-2">
-            <div className="w-7 h-7 bg-brand rounded flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">P</span>
-            </div>
-            <span className="font-semibold text-brand-dark text-sm whitespace-nowrap">POT Analytics</span>
+            <img src="/logo.png" alt="Zentrack logo" className="h-8 w-auto flex-shrink-0" />
+            <span className="font-semibold text-brand-dark text-sm whitespace-nowrap">POT Analítica</span>
           </div>
 
           <NavLink to="/" end
