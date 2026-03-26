@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ReferenceDot, ResponsiveContainer, Legend,
 } from 'recharts'
 import TrafficLight from './TrafficLight'
@@ -204,17 +204,21 @@ function LoadDispChart({ ensayo, refRows }) {
   const meta = TIPO_META[ensayo.tipo] || TIPO_META.tension_vertical
   const gradId = `grad-${ensayo.tipo}`
 
-  const pts = (ensayo.puntos || []).map(p => ({
-    x: +(p.desplazamiento_mm ?? 0).toFixed(4),
-    y: +(((p.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
-  }))
+  const pts = (() => {
+    const all = (ensayo.puntos || []).map(p => ({
+      x: +(p.desplazamiento_mm ?? 0).toFixed(4),
+      y: +(((p.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
+    }))
+    // Keep only the loading envelope: points where displacement >= previous max
+    let maxX = -Infinity
+    return all.filter(p => {
+      if (p.x >= maxX) { maxX = p.x; return true }
+      return false
+    })
+  })()
   if (!pts.length) return (
     <div className="flex items-center justify-center h-36 text-gray-400 text-sm">Sin datos</div>
   )
-
-  const refPoints = (refRows || [])
-    .filter(r => r.interpDisp !== null)
-    .map(r => ({ x: r.interpDisp, ref: r.designForce, paso: r.paso }))
 
   const maxDesign = refRows?.length ? Math.max(...refRows.map(r => r.designForce)) : 0
   const dataMaxX = Math.max(...pts.map(d => d.x))
@@ -273,15 +277,6 @@ function LoadDispChart({ ensayo, refRows }) {
     )
   }
 
-  const CustomDot = ({ cx, cy, payload }) => {
-    if (!payload || payload.ref == null) return null
-    return (
-      <g>
-        <circle cx={cx} cy={cy} r={4} fill="white" stroke={meta.color} strokeWidth={1.5} />
-        <circle cx={cx} cy={cy} r={1.5} fill={meta.color} />
-      </g>
-    )
-  }
 
   return (
     <div id={`chart-${ensayo.punto_id}-${ensayo.tipo}`}>
@@ -394,19 +389,6 @@ function LoadDispChart({ ensayo, refRows }) {
               type="monotone"
             />
 
-            {/* Design load points on curve */}
-            {refPoints.length > 0 && (
-              <Line
-                data={refPoints}
-                dataKey="ref"
-                name="Escalones diseño"
-                stroke={meta.color}
-                strokeWidth={0}
-                dot={<CustomDot />}
-                activeDot={{ r: 5, strokeWidth: 1.5 }}
-                legendType="circle"
-              />
-            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>
