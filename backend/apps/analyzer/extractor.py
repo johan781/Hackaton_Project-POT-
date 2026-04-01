@@ -1062,6 +1062,150 @@ def _parse_format_e(pages_text: list[str], file_bytes: bytes) -> dict | None:
     return {"proyecto": proyecto, "puntos": puntos, "_pdf_debug": debug_pages}
 
 
+# ─── Formato F: Enexa "FORMATO PARA PRUEBA PULL OUT TEST" (Tamalamenque) ─────
+
+_FORMAT_F_CORPO_RE = re.compile(r"ENEXA\s+ENERGY", re.IGNORECASE)
+_FORMAT_F_HEADER_RE = re.compile(r"FORMATO\s+PARA\s+PRUEBA\s+PULL\s+OUT\s+TEST", re.IGNORECASE)
+_FORMAT_F_POT_ID_RE = re.compile(r"POT[-\s]*[A-Z][-\s]*\d+(?:[-\s]*SAT)?", re.IGNORECASE)
+
+
+def _first_num_in_cell(cell) -> float | None:
+    """Extrae el primer número de una celda que puede contener texto mezclado."""
+    if not cell:
+        return None
+    s = str(cell).strip()
+    if s in ("-", "–", "—", ""):
+        return None
+    m = re.match(r"^\s*([\d]+[,\.][\d]+|[\d]+)", s.replace(",", "."))
+    return _num(m.group(1)) if m else None
+
+
+def _parse_format_f(pages_text: list[str], file_bytes: bytes) -> dict | None:
+    """
+    Formato F — Enexa "FORMATO PARA PRUEBA PULL OUT TEST" (Tamalamenque y similares).
+
+    Estructura por página de ensayo:
+      Table 0: header corporativo (PULL OUT TEST / ENEXA ENERGY S.A.S)
+      Table 1: formato + proyecto + fecha
+      Table 2: tabla de datos 6 cols físicas
+               col0 = escalon + obj_comp  col1 = F_comp
+               col2 = D_comp + obj_trac   col3 = F_trac
+               col4 = D_trac + obj_lat    col5 = F_lat  (sin D_lat)
+      Table 3: fecha ensayo, coordenadas, profundidad (mm)
+      Table 4: fecha hincado, tipo perfil
+    """
+    import pdfplumber as _plumber
+
+    all_text = "\n".join(pages_text)
+    if not (_FORMAT_F_CORPO_RE.search(all_text) and _FORMAT_F_HEADER_RE.search(all_text)):
+        return None
+
+    # Nombre de proyecto desde texto
+    proyecto_nombre = "Proyecto POT"
+    m = re.search(r"PROYECTO\s*[-–]\s*(.+?)(?:\n|$)", all_text, re.IGNORECASE)
+    if m:
+        proyecto_nombre = m.group(1).strip()
+
+    proyecto = {
+        "nombre": proyecto_nombre,
+        "cliente": "ENEXA ENERGY S.A.S",
+        "ubicacion": "",
+        "fecha": str(date.today()),
+    }
+    puntos_by_id: dict[str, dict] = {}
+
+    with _plumber.open(io.BytesIO(file_bytes)) as pdf:
+        for page_num, page in enumerate(pdf.pages):
+            page_text = pages_text[page_num]
+            tables = page.extract_tables() or []
+
+            # Detectar tabla de datos (6 cols con "Fuerza Aplicada" en header)
+            data_tbl = None
+            meta_tbl = None
+            for tbl in tables:
+                if not tbl:
+                    continue
+                header = " ".join(str(c or "") for c in tbl[0]).lower()
+                row_text = " ".join(str(c or "") for row in tbl for c in row).lower()
+                if "fuerza aplicada" in header and len(tbl[0]) >= 6:
+                    data_tbl = tbl
+                elif "coordenadas" in row_text and len(tbl) >= 2:
+                    meta_tbl = tbl
+
+            if data_tbl is None:
+                continue
+
+            # ── Metadata ──────────────────────────────────────────────────────
+            fecha_ensayo = None
+            profundidad_m = None
+            coordenadas = None
+            if meta_tbl and len(meta_tbl) >= 2:
+                fecha_ensayo = _clean(meta_tbl[0][0]) or None
+                prof_raw = _num(meta_tbl[1][0])
+                if prof_raw and prof_raw > 10:   # viene en mm (ej 3000)
+                    profundidad_m = round(prof_raw / 1000, 2)
+                elif prof_raw:                    # ya en metros
+                    profundidad_m = prof_raw
+                lat = _clean(meta_tbl[0][2]) if len(meta_tbl[0]) > 2 else None
+                lon = _clean(meta_tbl[1][2]) if len(meta_tbl[1]) > 2 else None
+                if lat and lon:
+                    coordenadas = f"{lat} / {lon}"
+
+            # ── Punto ID desde texto de la página ─────────────────────────────
+            pid_m = _FORMAT_F_POT_ID_RE.search(page_text)
+            punto_id = (
+                pid_m.group(0).replace(" ", "-").upper().strip("-")
+                if pid_m else f"POT-F{page_num + 1:02d}"
+            )
+
+            # ── Parsear tabla de datos ─────────────────────────────────────────
+            comp_pairs: list[tuple] = []
+            trac_pairs: list[tuple] = []
+
+            for row in data_tbl[1:]:    # saltar fila de encabezado
+                if len(row) < 6:
+                    continue
+                f_comp = _num(row[1])
+                d_comp = _first_num_in_cell(row[2])
+                f_trac = _num(row[3])
+                d_trac = _first_num_in_cell(row[4])
+
+                if f_comp and f_comp > 0 and d_comp is not None:
+                    comp_pairs.append((d_comp, f_comp))
+                if f_trac and f_trac > 0 and d_trac is not None:
+                    trac_pairs.append((d_trac, f_trac))
+
+            ensayos = []
+            for tipo, pairs in (
+                ("compresion_vertical", comp_pairs),
+                ("tension_vertical",    trac_pairs),
+            ):
+                e = _build_ensayo(tipo, pairs)
+                if e:
+                    ensayos.append(e)
+
+            if not ensayos:
+                continue
+
+            if punto_id not in puntos_by_id:
+                p = _empty_punto(punto_id)
+                p["fecha_ensayo"]  = fecha_ensayo
+                p["profundidad_m"] = profundidad_m
+                p["coordenadas"]   = coordenadas
+                puntos_by_id[punto_id] = p
+
+            existing = {e["tipo"] for e in puntos_by_id[punto_id]["ensayos"]}
+            for e in ensayos:
+                if e["tipo"] not in existing:
+                    puntos_by_id[punto_id]["ensayos"].append(e)
+                    existing.add(e["tipo"])
+
+    if not puntos_by_id:
+        return None
+
+    return {"proyecto": proyecto, "puntos": list(puntos_by_id.values())}
+
+
 # ─── Parser genérico (fallback para formatos desconocidos) ───────────────────
 
 # Sinónimos amplios para detectar columnas de fuerza y desplazamiento
@@ -1235,6 +1379,11 @@ def parse_pdf(file_bytes: bytes) -> dict:
     result_e = _parse_format_e(pages_text, file_bytes)
     if result_e and result_e.get("puntos"):
         return result_e
+
+    # ── Intento 1b: Formato F (Enexa "FORMATO PARA PRUEBA PULL OUT TEST") ─────
+    result_f = _parse_format_f(pages_text, file_bytes)
+    if result_f and result_f.get("puntos"):
+        return result_f
 
     # ── Intento 2: Formato C (texto limpio, "Punto Analizado:") ───────────────
     result_c = _parse_format_c(all_text)
