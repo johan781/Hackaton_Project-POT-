@@ -15,9 +15,9 @@ const ESTADO_ORDER = ['satisfactorio', 'margen_fuerza', 'no_cumple_deformaciones
 
 // ─── Test type metadata ───────────────────────────────────────────────────────
 const TIPO_META = {
-  tension_vertical:    { label: 'Tensión Vertical',   color: '#fd9c10', bg: 'bg-orange-50',   border: 'border-orange-200',  badge: 'bg-orange-100 text-orange-700',  loadKey: 'tension_kN' },
-  compresion_vertical: { label: 'Compresión Vertical', color: '#797979', bg: 'bg-gray-100',    border: 'border-gray-300',    badge: 'bg-gray-200 text-gray-700',      loadKey: 'compresion_kN' },
-  carga_lateral:       { label: 'Carga Lateral',       color: '#1a1a1a', bg: 'bg-neutral-100', border: 'border-neutral-300', badge: 'bg-neutral-200 text-neutral-700', loadKey: 'lateral_kN' },
+  tension_vertical:    { label: 'Prueba de Tracción (Tensión)',   color: '#fd9c10', bg: 'bg-orange-50',   border: 'border-orange-200',  badge: 'bg-orange-100 text-orange-700',  loadKey: 'tension_kN' },
+  compresion_vertical: { label: 'Prueba de Compresión',        color: '#797979', bg: 'bg-gray-100',    border: 'border-gray-300',    badge: 'bg-gray-200 text-gray-700',      loadKey: 'compresion_kN' },
+  carga_lateral:       { label: 'Prueba de Carga Lateral',       color: '#1a1a1a', bg: 'bg-neutral-100', border: 'border-neutral-300', badge: 'bg-neutral-200 text-neutral-700', loadKey: 'lateral_kN' },
 }
 
 // ─── Criteria helpers (ONLY used when a load set is selected) ─────────────────
@@ -205,10 +205,18 @@ function LoadDispChart({ ensayo, refRows }) {
   const gradId = `grad-${ensayo.tipo}`
 
   const pts = (() => {
-    const all = (ensayo.puntos || []).map(p => ({
+    let all = (ensayo.puntos || []).map(p => ({
       x: +(p.desplazamiento_mm ?? 0).toFixed(4),
       y: +(((p.fuerza_kg ?? 0) * 0.00980665).toFixed(3)),
     }))
+    
+    // Forzar que la gráfica inicie en (0,0) si no existe el punto inicial
+    if (all.length > 0 && (all[0].x !== 0 || all[0].y !== 0)) {
+      all = [{ x: 0, y: 0 }, ...all]
+    } else if (all.length === 0) {
+      all = [{ x: 0, y: 0 }]
+    }
+
     // Keep only the loading envelope: points where displacement >= previous max
     let maxX = -Infinity
     return all.filter(p => {
@@ -386,7 +394,7 @@ function LoadDispChart({ ensayo, refRows }) {
               dot={{ r: 2.5, fill: meta.color, stroke: 'white', strokeWidth: 1 }}
               activeDot={{ r: 4, stroke: 'white', strokeWidth: 1.5 }}
               connectNulls
-              type="monotone"
+              type="linear"
             />
 
           </ComposedChart>

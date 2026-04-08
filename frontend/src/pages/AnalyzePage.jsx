@@ -23,6 +23,13 @@ function DebugPanel({ analysis }) {
         <div className="text-brand-gray uppercase text-xs mb-2">Información del archivo</div>
         <div>Nombre: <span className="text-white">{debug.filename}</span></div>
         <div>Tipo: <span className="text-white">{debug.ext}</span></div>
+        <div>Parser: <span className="text-blue-400 font-bold">{debug.parser}</span></div>
+        {debug.agente_analisis && (
+          <div className="mt-2 text-yellow-200 bg-yellow-900/30 p-2 rounded border border-yellow-700/50">
+            <span className="text-brand-gray uppercase text-[10px] block mb-1">Nota del Agente</span>
+            {debug.agente_analisis}
+          </div>
+        )}
         <div>Tamaño/Páginas: <span className="text-white">{debug.pages_or_size}</span></div>
       </div>
 
@@ -223,12 +230,34 @@ export default function AnalyzePage() {
 
       {/* Error */}
       {error && (
-        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded p-4 text-sm text-red-700">
-          <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-          <div>
-            <div className="font-semibold mb-0.5">Error en el análisis</div>
-            <div className="whitespace-pre-wrap">{error}</div>
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded p-4 text-sm text-red-700">
+            <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+            <div>
+              <div className="font-semibold mb-0.5">Error en el análisis</div>
+              <div className="whitespace-pre-wrap">{error}</div>
+            </div>
           </div>
+          
+          {error.includes('GOOGLE_API_KEY') && (
+            <div className="bg-blue-50 border border-blue-200 rounded p-5 text-sm">
+              <h4 className="text-blue-800 font-bold mb-2 flex items-center gap-2">
+                🚀 Usa la IA Gratuita de Google
+              </h4>
+              <p className="text-blue-700 mb-3">
+                Para que el agente pueda analizar cualquier formato con visión artificial sin costo, necesitas una llave gratuita de Gemini:
+              </p>
+              <ol className="list-decimal ml-5 space-y-1 text-blue-700 mb-4">
+                <li>Ve a <a href="https://aistudio.google.com/" target="_blank" rel="noreferrer" className="underline font-bold">Google AI Studio</a>.</li>
+                <li>Haz clic en <b>"Get API Key"</b>.</li>
+                <li>Crea una <b>"Free API Key"</b>.</li>
+                <li>Agrégala a tu archivo <code>.env</code> como <code>GOOGLE_API_KEY</code>.</li>
+              </ol>
+              <div className="text-[10px] text-blue-500 uppercase tracking-wider">
+                El tier gratuito soporta hasta 15 consultas por minuto.
+              </div>
+            </div>
+          )}
         </div>
       )}
 

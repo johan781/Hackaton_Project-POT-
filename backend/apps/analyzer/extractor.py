@@ -30,7 +30,9 @@ import io
 import re
 from datetime import date
 
+import os
 import openpyxl
+from .ai_extractor import try_ai_extraction
 
 KGF_TO_KN = 0.00980665
 
@@ -1362,6 +1364,69 @@ def _parse_table_generic(table: list[list], context_text: str = "") -> tuple[str
     return tipo, pts
 
 
+# ─── Parser Genérico (Smart Local Agent) ──────────────────────────────────────
+
+_GENERIC_LOAD_KWS = ["carga", "fuerza", "load", "force", "kg", "kn", "kgf", "nominal", "real"]
+_GENERIC_DISP_KWS = ["desplaz", "settlement", "disp", "mm", "deflection", "lectura"]
+
+def _parse_generic_table(table: list[list[str]]) -> list[dict]:
+    """
+    Intenta extraer pares (carga, desplazamiento) de una tabla sin conocer su formato.
+    """
+    if not table or len(table) < 2:
+        return []
+
+    # 1. Buscar fila de cabecera
+    header_idx = -1
+    for i, row in enumerate(table[:5]):
+        row_text = " ".join(c.lower() for c in row if c)
+        if any(kw in row_text for kw in _GENERIC_LOAD_KWS) and \
+           any(kw in row_text for kw in _GENERIC_DISP_KWS):
+            header_idx = i
+            break
+    
+    if header_idx == -1:
+        return []
+
+    headers = [c.lower() for c in table[header_idx]]
+    
+    # 2. Detectar columnas
+    col_fuerza = -1
+    col_disp = -1
+    fuerza_factor = 1.0 # default kgf
+
+    # Prioridad para KN
+    if any("kn" in h for h in headers):
+        col_fuerza = next((i for i, h in enumerate(headers) if "kn" in h), -1)
+        fuerza_factor = 1.0 / KGF_TO_KN
+    
+    if col_fuerza == -1:
+        # Buscar por palabras clave de fuerza
+        col_fuerza = next((i for i, h in enumerate(headers) if any(kw in h for kw in ["carga", "fuerza", "load", "kg"])), -1)
+    
+    col_disp = next((i for i, h in enumerate(headers) if any(kw in h for kw in ["desplaz", "disp", "mm", "settlement"])), -1)
+
+    if col_fuerza == -1 or col_disp == -1:
+        return []
+
+    # 3. Extraer puntos
+    pts = []
+    for row in table[header_idx + 1:]:
+        if len(row) <= max(col_fuerza, col_disp):
+            continue
+        
+        f_val = _num(row[col_fuerza])
+        d_val = _num(row[col_disp])
+        
+        if f_val is not None and d_val is not None:
+            if f_val > 0: # Solo fase de carga o relevante
+                pts.append({
+                    "desplazamiento_mm": d_val,
+                    "fuerza_kg": round(f_val * fuerza_factor, 2)
+                })
+    
+    return pts
+
 # ─── Parser PDF principal ─────────────────────────────────────────────────────
 
 def parse_pdf(file_bytes: bytes) -> dict:
@@ -1375,245 +1440,26 @@ def parse_pdf(file_bytes: bytes) -> dict:
         ]
     all_text = "\n".join(pages_text)
 
-    # ── Intento 1: Formato E (GLO-HAT-POT "FORMATO RECOPILACIÓN DE DATOS") ─────
-    result_e = _parse_format_e(pages_text, file_bytes)
-    if result_e and result_e.get("puntos"):
-        return result_e
+    # ── MÉTODO ÚNICO: POT Agent (AI Multimodal) ───────────────────────────────
+    # Hemos desactivado todos los parsers antiguos por reglas para delegar el
+    # análisis 100% a la Inteligencia Artificial, garantizando escalabilidad.
+    ai_data = try_ai_extraction(file_bytes, all_text)
+    
+    if ai_data and ai_data.get("puntos"):
+        return ai_data
 
-    # ── Intento 1b: Formato F (Enexa "FORMATO PARA PRUEBA PULL OUT TEST") ─────
-    result_f = _parse_format_f(pages_text, file_bytes)
-    if result_f and result_f.get("puntos"):
-        return result_f
-
-    # ── Intento 2: Formato C (texto limpio, "Punto Analizado:") ───────────────
-    result_c = _parse_format_c(all_text)
-    if result_c and result_c.get("puntos"):
-        return result_c
-
-    # ── Intento 3: Formato D (Enexa spaced-text "FORMATO PARA PRUEBA") ───────
-    result_d = _parse_format_d(pages_text)
-    if result_d and result_d.get("puntos"):
-        return result_d
-
-    # ── Intento 3: Formato A/B (tablas pdfplumber) ────────────────────────────
-    proyecto: dict = {
-        "nombre": "Proyecto POT", "cliente": "", "ubicacion": "",
-        "fecha": str(date.today()),
-    }
-    puntos_by_id: dict[str, dict] = {}  # punto_id → punto dict
-    debug_pages: list[dict] = []
-
-    with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-        for page_num, page in enumerate(pdf.pages):
-            full_text = pages_text[page_num]
-            text_meta = _extract_metadata_text(full_text)
-
-            # Actualizar proyecto con metadata global (texto plano)
-            if text_meta.get("proyecto_nombre") and proyecto["nombre"] == "Proyecto POT":
-                proyecto["nombre"] = text_meta["proyecto_nombre"]
-            if text_meta.get("cliente") and not proyecto["cliente"]:
-                proyecto["cliente"] = text_meta["cliente"]
-            if text_meta.get("fecha_ensayo") and proyecto["fecha"] == str(date.today()):
-                proyecto["fecha"] = text_meta["fecha_ensayo"]
-
-            # ── Extraer tablas con pdfplumber ─────────────────────────────
-            tables = page.extract_tables()
-
-            # ── Intentar Formato A (Pivijay): tablas individuales ─────────
-            page_meta: dict = {}
-            ensayos_a: list[dict] = []
-            profundidad: float | None = None
-
-            for tbl in tables:
-                tbl_str = [[_clean(c) for c in row] for row in tbl]
-                if not tbl_str or not tbl_str[0]:
-                    continue
-
-                title_raw = " ".join(_decode_repeated(c) for c in tbl_str[0] if c)
-
-                # ¿Es tabla de ensayo?
-                if _ENSAYO_TITLE_RE.search(title_raw):
-                    tipo, pts = _parse_ensayo_table_a(tbl_str)
-                    if tipo and pts:
-                        e = {
-                            "tipo": tipo,
-                            "nombre": TIPO_LABELS.get(tipo, tipo),
-                            "carga_maxima_kgf":         max(p["fuerza_kg"]         for p in pts),
-                            "desplazamiento_maximo_mm": max(p["desplazamiento_mm"] for p in pts),
-                            "puntos": pts,
-                        }
-                        ensayos_a.append(e)
-                    continue
-
-                # ¿Es tabla de metadata del punto?
-                # Revisar las primeras 3 filas (la fila 0 puede ser el título "REPORTE DE ENSAYO PULL OUT TEST")
-                first_rows_decoded = " ".join(
-                    _decode_repeated(c)
-                    for row in tbl_str[:3]
-                    for c in row
-                    if c
-                )
-                if any(k in first_rows_decoded.upper() for k in ("PROYECTO", "CLIENTE", "UBICAC", "POT", "CORDENADA")):
-                    m = _parse_metadata_table_a(tbl_str)
-                    page_meta.update({k: v for k, v in m.items() if v})
-                    continue
-
-                # ¿Es tabla de profundidad?
-                flat = " ".join(c for row in tbl_str for c in row).lower()
-                if "hincado directo" in flat or "profundidad real" in flat:
-                    p = _parse_profundidad_table(tbl_str)
-                    if p is not None:
-                        profundidad = p
-                    continue
-
-            # ── Si no hay ensayos Formato A, intentar Formato B ───────────
-            ensayos_b: list[dict] = []
-            if not ensayos_a:
-                # Intentar reconstrucción por palabras
-                words = page.extract_words(x_tolerance=3, y_tolerance=3, keep_blank_chars=False)
-                if words:
-                    rows    = _words_to_rows(words, row_gap=8)
-                    centers = _cluster_x(rows, merge_dist=20)
-                    table   = _rows_to_table(rows, centers)
-                    result  = _parse_ensayo_table_b(table)
-                    if result:
-                        ensayos_b = result
-
-                # Fallback: extract_tables con estrategia de texto
-                if not ensayos_b:
-                    for strat in [
-                        {"vertical_strategy": "lines",  "horizontal_strategy": "lines"},
-                        {"vertical_strategy": "text",   "horizontal_strategy": "text"},
-                    ]:
-                        try:
-                            for tbl in page.extract_tables(strat):
-                                tbl_str = [[_clean(c) for c in row] for row in tbl]
-                                r = _parse_ensayo_table_b(tbl_str)
-                                if r:
-                                    ensayos_b = r
-                                    break
-                        except Exception:
-                            pass
-                        if ensayos_b:
-                            break
-
-            ensayos = ensayos_a or ensayos_b
-            if not ensayos:
-                continue
-
-            # Propagar nombre de proyecto / cliente / ubicación / fecha desde page_meta
-            if page_meta.get("proyecto") and proyecto["nombre"] == "Proyecto POT":
-                proyecto["nombre"] = page_meta["proyecto"]
-            if page_meta.get("cliente") and not proyecto["cliente"]:
-                proyecto["cliente"] = page_meta["cliente"]
-            if page_meta.get("ubicacion") and not proyecto["ubicacion"]:
-                proyecto["ubicacion"] = page_meta["ubicacion"]
-            if page_meta.get("fecha_ensayo") and proyecto["fecha"] == str(date.today()):
-                proyecto["fecha"] = page_meta["fecha_ensayo"]
-
-            # Determinar punto_id
-            punto_id = (
-                page_meta.get("punto_id")
-                or text_meta.get("punto_id")
-                or f"P-{page_num + 1:02d}"
-            )
-
-            # Agrupar o crear el punto
-            if punto_id not in puntos_by_id:
-                p = _empty_punto(punto_id)
-                p["profundidad_m"] = profundidad or text_meta.get("profundidad_m")
-                p["tipo_perfil"]   = page_meta.get("tipo_perfil") or text_meta.get("tipo_perfil")
-                p["coordenadas"]   = page_meta.get("coordenadas") or text_meta.get("coordenadas")
-                p["fecha_ensayo"]  = page_meta.get("fecha_ensayo") or text_meta.get("fecha_ensayo")
-                puntos_by_id[punto_id] = p
-
-            # Agregar ensayos (sin duplicar por tipo)
-            existing_tipos = {e["tipo"] for e in puntos_by_id[punto_id]["ensayos"]}
-            for e in ensayos:
-                if e["tipo"] not in existing_tipos:
-                    puntos_by_id[punto_id]["ensayos"].append(e)
-                    existing_tipos.add(e["tipo"])
-
-            debug_pages.append({
-                "page": page_num + 1,
-                "punto_id": punto_id,
-                "ensayos": [e["tipo"] for e in ensayos],
-                "formato": "A" if ensayos_a else "B",
-            })
-
-    puntos = list(puntos_by_id.values())
-
-    # ── Fallback genérico: si ningún formato A/B extrajo puntos ───────────────
-    if not puntos:
-        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf_gen:
-            for page_num, page in enumerate(pdf_gen.pages):
-                page_text = pages_text[page_num]
-                ensayos_gen: list[dict] = []
-
-                # Intentar con todas las tablas de la página
-                for tbl in (page.extract_tables() or []):
-                    tbl_str = [[_clean(c) for c in row] for row in tbl]
-                    tipo, pts = _parse_table_generic(tbl_str, page_text)
-                    if tipo and pts:
-                        e = {
-                            "tipo": tipo,
-                            "nombre": TIPO_LABELS.get(tipo, tipo),
-                            "carga_maxima_kgf":         max(p["fuerza_kg"]         for p in pts),
-                            "desplazamiento_maximo_mm": max(p["desplazamiento_mm"] for p in pts),
-                            "puntos": pts,
-                        }
-                        ensayos_gen.append(e)
-
-                # También intentar con reconstrucción por palabras
-                if not ensayos_gen:
-                    words = page.extract_words(x_tolerance=3, y_tolerance=3, keep_blank_chars=False)
-                    if words:
-                        rows    = _words_to_rows(words, row_gap=8)
-                        centers = _cluster_x(rows, merge_dist=20)
-                        table   = _rows_to_table(rows, centers)
-                        tipo, pts = _parse_table_generic(table, page_text)
-                        if tipo and pts:
-                            ensayos_gen.append({
-                                "tipo": tipo,
-                                "nombre": TIPO_LABELS.get(tipo, tipo),
-                                "carga_maxima_kgf":         max(p["fuerza_kg"]         for p in pts),
-                                "desplazamiento_maximo_mm": max(p["desplazamiento_mm"] for p in pts),
-                                "puntos": pts,
-                            })
-
-                if not ensayos_gen:
-                    continue
-
-                text_meta = _extract_metadata_text(page_text)
-                punto_id  = text_meta.get("punto_id") or f"P-{page_num + 1:02d}"
-
-                if punto_id not in puntos_by_id:
-                    p = _empty_punto(punto_id)
-                    p["profundidad_m"] = text_meta.get("profundidad_m")
-                    p["coordenadas"]   = text_meta.get("coordenadas")
-                    p["fecha_ensayo"]  = text_meta.get("fecha_ensayo")
-                    puntos_by_id[punto_id] = p
-
-                existing_tipos = {e["tipo"] for e in puntos_by_id[punto_id]["ensayos"]}
-                for e in ensayos_gen:
-                    if e["tipo"] not in existing_tipos:
-                        puntos_by_id[punto_id]["ensayos"].append(e)
-                        existing_tipos.add(e["tipo"])
-
-                debug_pages.append({
-                    "page": page_num + 1,
-                    "punto_id": punto_id,
-                    "ensayos": [e["tipo"] for e in ensayos_gen],
-                    "formato": "generic",
-                })
-
-        puntos = list(puntos_by_id.values())
-
+    # Si la IA falla, no intentamos parseos antiguos por solicitud del usuario.
+    # Los parsers antiguos han sido eliminados de este flujo.
     return {
-        "proyecto": proyecto,
-        "puntos":   puntos,
-        "_pdf_debug": debug_pages,
+        "proyecto": {"nombre": "Proyecto POT", "fecha": str(date.today())},
+        "puntos": [],
+        "agente_analisis": ai_data.get("agente_analisis") if ai_data else "El Agente de IA no devolvió resultados."
     }
+
+def _legacy_parse_pdf_disabled(file_bytes, pages_text, all_text):
+    # Función dummy para marcar el fin del flujo anterior. 
+    # El código de parseo por reglas fue removido para simplificar el sistema.
+    pass
 
 
 # ─── XLSX parser ──────────────────────────────────────────────────────────────
@@ -1804,11 +1650,14 @@ def analyze_file(file_bytes: bytes, filename: str) -> dict:
         raise ValueError(f"Formato no soportado: .{ext}. Usa PDF, XLSX o TXT.")
 
     pdf_debug = data.pop("_pdf_debug", None)
+    parser_name = "POT Agent (AI)" if data.get("_ai_used") else "Rule-based (no AI)"
+    
     data["_debug"] = {
         "filename": filename, "ext": ext,
-        "parser": "direct (no AI)",
+        "parser": parser_name,
         "note": note,
         "puntos_found": len(data.get("puntos", [])),
+        "agente_analisis": data.get("agente_analisis"),
         **({"pdf_pages_with_data": pdf_debug} if pdf_debug else {}),
     }
     return _enrich(data)

@@ -53,6 +53,7 @@ export default function LoadDisplacementChart({ ciclos = [] }) {
               name={s.label}
               stroke={Object.values(FASE_COLORS)[i % 3]}
               dot={false}
+              type="linear"
               strokeWidth={2}
               opacity={1 - i * 0.15}
               connectNulls

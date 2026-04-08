@@ -17,3 +17,6 @@ requests==2.32.5
 sqlparse==0.5.5
 typing_extensions==4.15.0
 urllib3==2.6.3
+anthropic==0.21.3
+google-genai==1.71.0
+pdf2image==1.17.0
